@@ -1,0 +1,91 @@
+% Statistics for demichie/OpenPDAC-12
+% Generated for [demichie/OpenPDAC-12](https://github.com/demichie/OpenPDAC-12) with [jgehrcke/github-repo-stats](https://github.com/jgehrcke/github-repo-stats) at 2024-07-26 08:51 UTC.
+
+
+## Views
+
+#### Unique visitors
+<div id="chart_views_unique" class="full-width-chart"></div>
+
+Cumulative: 1
+
+#### Total views
+<div id="chart_views_total" class="full-width-chart"></div>
+
+Cumulative: 1
+
+<div class="pagebreak-for-print"> </div>
+
+## Clones
+
+#### Unique cloners
+<div id="chart_clones_unique" class="full-width-chart"></div>
+
+Cumulative: 1
+
+#### Total clones
+<div id="chart_clones_total" class="full-width-chart"></div>
+
+Cumulative: 1
+
+
+
+<div class="pagebreak-for-print"> </div>
+
+
+
+## Stargazers
+
+This repository has no stars yet.
+
+
+
+## Forks
+
+This repository has no forks yet.
+
+
+
+<div class="pagebreak-for-print"> </div>
+
+
+
+## Top referrers and paths
+
+
+Note: Each data point in the plots shown below is influenced by the 14 days
+leading up to it. Each data point is the arithmetic mean of the "unique
+visitors per day" metric, built from a time window of 14 days width, and
+plotted at the right edge of that very time window. That is, these plots
+respond slowly to change (narrow peaks are smoothed out).
+
+
+
+
+#### Top referrers
+
+
+<div id="chart_referrers_top_n_alltime" class="full-width-chart"></div>
+
+Top 15 referrers: 01: `github.com`
+
+
+
+
+
+#### Top paths
+
+
+<div id="chart_paths_top_n_alltime" class="full-width-chart"></div>
+
+Top 15 paths: 01: `/`
+
+
+<script type="text/javascript">
+    vegaEmbed('#chart_views_unique', {"$schema": "https://vega.github.io/schema/vega-lite/v4.17.0.json", "config": {"arc": {"fill": "#1b1e23"}, "area": {"fill": "#1b1e23"}, "axisBottom": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisLeft": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisX": {"grid": false}, "axisY": {"grid": false, "labelBound": true}, "background": "#FFFFFF", "group": {"fill": "#FFFFFF"}, "header": {"fontWeight": 400, "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "legend": {"labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "symbolSize": 200, "symbolType": "circle", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "line": {"color": "#1b1e23", "stroke": "#1b1e23"}, "path": {"stroke": "#1b1e23"}, "point": {"color": "#1b1e23", "cursor": "pointer", "filled": true, "size": 20}, "range": {"category": ["#85a2f7", "#ea9755", "#7eb36a", "#f07071", "#bc85d9", "#e587b6", "#a9b4c4", "#d4c05e", "#64b9c4"]}, "style": {"bar": {"fill": "#1b1e23"}, "text": {"font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}}, "symbol": {"shape": "circle"}, "title": {"anchor": "start", "font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}, "trail": {"color": "#1b1e23", "stroke": "#1b1e23"}, "view": {"stroke": null}}, "data": {"name": "data-d902cafb79588c8d0a9fd3246349ac74"}, "datasets": {"data-d902cafb79588c8d0a9fd3246349ac74": [{"time": "2024-07-22T00:00:00+00:00", "views_total": 1, "views_unique": 1}]}, "encoding": {"tooltip": [{"field": "views_unique", "format": ".1f", "title": "views (u)", "type": "quantitative"}, {"field": "time", "format": "%B %e, %Y", "title": "date", "type": "temporal"}], "x": {"axis": {"labelAngle": 25}, "field": "time", "scale": {"domain": ["2024-07-22", "2024-07-22"]}, "timeUnit": "yearmonthdate", "title": "date", "type": "temporal"}, "y": {"axis": {}, "field": "views_unique", "scale": {"domain": [0, 1.1], "type": "linear", "zero": true}, "title": "unique views per day", "type": "quantitative"}}, "height": 200, "mark": {"point": true, "type": "line"}, "padding": 10, "width": "container"}, {"actions": false, "renderer": "svg"}).catch(console.error);
+vegaEmbed('#chart_views_total', {"$schema": "https://vega.github.io/schema/vega-lite/v4.17.0.json", "config": {"arc": {"fill": "#1b1e23"}, "area": {"fill": "#1b1e23"}, "axisBottom": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisLeft": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisX": {"grid": false}, "axisY": {"grid": false, "labelBound": true}, "background": "#FFFFFF", "group": {"fill": "#FFFFFF"}, "header": {"fontWeight": 400, "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "legend": {"labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "symbolSize": 200, "symbolType": "circle", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "line": {"color": "#1b1e23", "stroke": "#1b1e23"}, "path": {"stroke": "#1b1e23"}, "point": {"color": "#1b1e23", "cursor": "pointer", "filled": true, "size": 20}, "range": {"category": ["#85a2f7", "#ea9755", "#7eb36a", "#f07071", "#bc85d9", "#e587b6", "#a9b4c4", "#d4c05e", "#64b9c4"]}, "style": {"bar": {"fill": "#1b1e23"}, "text": {"font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}}, "symbol": {"shape": "circle"}, "title": {"anchor": "start", "font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}, "trail": {"color": "#1b1e23", "stroke": "#1b1e23"}, "view": {"stroke": null}}, "data": {"name": "data-d902cafb79588c8d0a9fd3246349ac74"}, "datasets": {"data-d902cafb79588c8d0a9fd3246349ac74": [{"time": "2024-07-22T00:00:00+00:00", "views_total": 1, "views_unique": 1}]}, "encoding": {"tooltip": [{"field": "views_total", "format": ".1f", "title": "views (t)", "type": "quantitative"}, {"field": "time", "format": "%B %e, %Y", "title": "date", "type": "temporal"}], "x": {"axis": {"labelAngle": 25}, "field": "time", "scale": {"domain": ["2024-07-22", "2024-07-22"]}, "timeUnit": "yearmonthdate", "title": "date", "type": "temporal"}, "y": {"axis": {}, "field": "views_total", "scale": {"domain": [0, 1.1], "type": "linear", "zero": true}, "title": "total views per day", "type": "quantitative"}}, "height": 200, "mark": {"point": true, "type": "line"}, "padding": 10, "width": "container"}, {"actions": false, "renderer": "svg"}).catch(console.error);
+vegaEmbed('#chart_clones_unique', {"$schema": "https://vega.github.io/schema/vega-lite/v4.17.0.json", "config": {"arc": {"fill": "#1b1e23"}, "area": {"fill": "#1b1e23"}, "axisBottom": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisLeft": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisX": {"grid": false}, "axisY": {"grid": false, "labelBound": true}, "background": "#FFFFFF", "group": {"fill": "#FFFFFF"}, "header": {"fontWeight": 400, "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "legend": {"labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "symbolSize": 200, "symbolType": "circle", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "line": {"color": "#1b1e23", "stroke": "#1b1e23"}, "path": {"stroke": "#1b1e23"}, "point": {"color": "#1b1e23", "cursor": "pointer", "filled": true, "size": 20}, "range": {"category": ["#85a2f7", "#ea9755", "#7eb36a", "#f07071", "#bc85d9", "#e587b6", "#a9b4c4", "#d4c05e", "#64b9c4"]}, "style": {"bar": {"fill": "#1b1e23"}, "text": {"font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}}, "symbol": {"shape": "circle"}, "title": {"anchor": "start", "font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}, "trail": {"color": "#1b1e23", "stroke": "#1b1e23"}, "view": {"stroke": null}}, "data": {"name": "data-eb5800c5cc99e9bbcb3b8c1c7057752e"}, "datasets": {"data-eb5800c5cc99e9bbcb3b8c1c7057752e": [{"clones_total": 1, "clones_unique": 1, "time": "2024-07-22T00:00:00+00:00"}]}, "encoding": {"tooltip": [{"field": "clones_unique", "format": ".1f", "title": "clones (u)", "type": "quantitative"}, {"field": "time", "format": "%B %e, %Y", "title": "date", "type": "temporal"}], "x": {"axis": {"labelAngle": 25}, "field": "time", "scale": {"domain": ["2024-07-22", "2024-07-22"]}, "timeUnit": "yearmonthdate", "title": "date", "type": "temporal"}, "y": {"axis": {}, "field": "clones_unique", "scale": {"domain": [0, 1.1], "type": "linear", "zero": true}, "title": "unique clones per day", "type": "quantitative"}}, "height": 200, "mark": {"point": true, "type": "line"}, "padding": 10, "width": "container"}, {"actions": false, "renderer": "svg"}).catch(console.error);
+vegaEmbed('#chart_clones_total', {"$schema": "https://vega.github.io/schema/vega-lite/v4.17.0.json", "config": {"arc": {"fill": "#1b1e23"}, "area": {"fill": "#1b1e23"}, "axisBottom": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisLeft": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisX": {"grid": false}, "axisY": {"grid": false, "labelBound": true}, "background": "#FFFFFF", "group": {"fill": "#FFFFFF"}, "header": {"fontWeight": 400, "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "legend": {"labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "symbolSize": 200, "symbolType": "circle", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "line": {"color": "#1b1e23", "stroke": "#1b1e23"}, "path": {"stroke": "#1b1e23"}, "point": {"color": "#1b1e23", "cursor": "pointer", "filled": true, "size": 20}, "range": {"category": ["#85a2f7", "#ea9755", "#7eb36a", "#f07071", "#bc85d9", "#e587b6", "#a9b4c4", "#d4c05e", "#64b9c4"]}, "style": {"bar": {"fill": "#1b1e23"}, "text": {"font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}}, "symbol": {"shape": "circle"}, "title": {"anchor": "start", "font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}, "trail": {"color": "#1b1e23", "stroke": "#1b1e23"}, "view": {"stroke": null}}, "data": {"name": "data-eb5800c5cc99e9bbcb3b8c1c7057752e"}, "datasets": {"data-eb5800c5cc99e9bbcb3b8c1c7057752e": [{"clones_total": 1, "clones_unique": 1, "time": "2024-07-22T00:00:00+00:00"}]}, "encoding": {"tooltip": [{"field": "clones_total", "format": ".1f", "title": "clones (t)", "type": "quantitative"}, {"field": "time", "format": "%B %e, %Y", "title": "date", "type": "temporal"}], "x": {"axis": {"labelAngle": 25}, "field": "time", "scale": {"domain": ["2024-07-22", "2024-07-22"]}, "timeUnit": "yearmonthdate", "title": "date", "type": "temporal"}, "y": {"axis": {}, "field": "clones_total", "scale": {"domain": [0, 1.1], "type": "linear", "zero": true}, "title": "total clones per day", "type": "quantitative"}}, "height": 200, "mark": {"point": true, "type": "line"}, "padding": 10, "width": "container"}, {"actions": false, "renderer": "svg"}).catch(console.error);
+vegaEmbed('#chart_referrers_top_n_alltime', {"$schema": "https://vega.github.io/schema/vega-lite/v4.17.0.json", "config": {"arc": {"fill": "#1b1e23"}, "area": {"fill": "#1b1e23"}, "axisBottom": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisLeft": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisX": {"grid": false}, "axisY": {"grid": false}, "background": "#FFFFFF", "group": {"fill": "#FFFFFF"}, "header": {"fontWeight": 400, "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "legend": {"labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "symbolSize": 200, "symbolType": "circle", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "line": {"color": "#1b1e23", "stroke": "#1b1e23"}, "path": {"stroke": "#1b1e23"}, "point": {"color": "#1b1e23", "cursor": "pointer", "filled": true, "size": 30}, "range": {"category": ["#85a2f7", "#ea9755", "#7eb36a", "#f07071", "#bc85d9", "#e587b6", "#a9b4c4", "#d4c05e", "#64b9c4"]}, "style": {"bar": {"fill": "#1b1e23"}, "text": {"font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}}, "symbol": {"shape": "circle"}, "title": {"anchor": "start", "font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}, "trail": {"color": "#1b1e23", "stroke": "#1b1e23"}, "view": {"stroke": null}}, "data": {"name": "data-e3df49f6e05a60834dcd0094d2da21e5"}, "datasets": {"data-e3df49f6e05a60834dcd0094d2da21e5": [{"referrer": "github.com", "time": "2024-07-26T00:00:00+00:00", "views_unique": 1, "views_unique_norm": 0.07142857142857142}]}, "encoding": {"color": {"field": "referrer", "legend": {"direction": "vertical", "orient": "top", "title": "Legend:"}, "sort": {"field": "order"}, "type": "nominal"}, "tooltip": [{"field": "referrer", "type": "nominal"}, {"field": "views_unique_norm", "format": ".2f", "title": "views (14d mean)", "type": "quantitative"}, {"field": "time", "format": "%B %e, %Y", "title": "date", "type": "temporal"}], "x": {"axis": {"labelAngle": 25}, "field": "time", "scale": {"domain": ["2024-07-22", "2024-07-22"]}, "timeUnit": "yearmonthdate", "title": "date", "type": "temporal"}, "y": {"field": "views_unique_norm", "scale": {"domain": [0, 0.07857142857142857], "type": "linear", "zero": true}, "title": "unique visitors per day (mean from last 14 days)", "type": "quantitative"}}, "height": 300, "mark": {"point": true, "type": "line"}, "padding": 10, "width": "container"}, {"actions": false, "renderer": "svg"}).catch(console.error);
+vegaEmbed('#chart_paths_top_n_alltime', {"$schema": "https://vega.github.io/schema/vega-lite/v4.17.0.json", "config": {"arc": {"fill": "#1b1e23"}, "area": {"fill": "#1b1e23"}, "axisBottom": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisLeft": {"domainColor": "#a9b4c4", "gridColor": "#a9b4c4", "labelColor": "#1b1e23", "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "tickColor": "#a9b4c4", "titleColor": "#1b1e23", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "axisX": {"grid": false}, "axisY": {"grid": false}, "background": "#FFFFFF", "group": {"fill": "#FFFFFF"}, "header": {"fontWeight": 400, "labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "legend": {"labelFont": "relative-mono-11-pitch-pro, Menlo, monospace", "symbolSize": 200, "symbolType": "circle", "titleFont": "relative-mono-11-pitch-pro, Menlo, monospace"}, "line": {"color": "#1b1e23", "stroke": "#1b1e23"}, "path": {"stroke": "#1b1e23"}, "point": {"color": "#1b1e23", "cursor": "pointer", "filled": true, "size": 30}, "range": {"category": ["#85a2f7", "#ea9755", "#7eb36a", "#f07071", "#bc85d9", "#e587b6", "#a9b4c4", "#d4c05e", "#64b9c4"]}, "style": {"bar": {"fill": "#1b1e23"}, "text": {"font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}}, "symbol": {"shape": "circle"}, "title": {"anchor": "start", "font": "relative-mono-11-pitch-pro, Menlo, monospace", "fontWeight": 400}, "trail": {"color": "#1b1e23", "stroke": "#1b1e23"}, "view": {"stroke": null}}, "data": {"name": "data-fd04b4a5c90bf8ada6ad984ecc937598"}, "datasets": {"data-fd04b4a5c90bf8ada6ad984ecc937598": [{"path": "/", "time": "2024-07-26T00:00:00+00:00", "views_unique": 1, "views_unique_norm": 0.07142857142857142}]}, "encoding": {"color": {"field": "path", "legend": {"direction": "vertical", "orient": "top", "title": "Legend:"}, "sort": {"field": "order"}, "type": "nominal"}, "tooltip": [{"field": "path", "type": "nominal"}, {"field": "views_unique_norm", "format": ".2f", "title": "views (14d mean)", "type": "quantitative"}, {"field": "time", "format": "%B %e, %Y", "title": "date", "type": "temporal"}], "x": {"axis": {"labelAngle": 25}, "field": "time", "scale": {"domain": ["2024-07-22", "2024-07-22"]}, "timeUnit": "yearmonthdate", "title": "date", "type": "temporal"}, "y": {"field": "views_unique_norm", "scale": {"domain": [0, 0.07857142857142857], "type": "linear", "zero": true}, "title": "unique visitors per day (mean from last 14 days)", "type": "quantitative"}}, "height": 300, "mark": {"point": true, "type": "line"}, "padding": 10, "width": "container"}, {"actions": false, "renderer": "svg"}).catch(console.error);
+    </script>
