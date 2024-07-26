@@ -1,0 +1,50 @@
+edges
+(
+);
+
+boundary
+(
+    atm
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)
+            (2 6 5 1)
+        );
+    }
+    top
+    {
+        type patch;
+        faces
+        (
+            (4 5 6 7)
+        );
+    }
+    bottom
+    {
+        type patch;
+        faces
+        (
+            (3 2 1 0)
+        );
+    }
+    front
+    {
+        type symmetry;
+        faces
+        (
+            (1 5 4 0)
+        );
+    }
+    back
+    {
+        type symmetry;
+        faces
+        (
+            (3 7 6 2)
+        );
+    }
+);
+
+// ************************************************************************* //

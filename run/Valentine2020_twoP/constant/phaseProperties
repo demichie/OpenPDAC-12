@@ -1,0 +1,140 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  dev
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      phaseProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+type    basicMultiphaseSystem;
+
+phases (particles1 particles2 air);
+
+continuousPhase air;
+
+referencePhase air;
+
+particles1
+{
+    type          purePhaseModel;
+
+    diameterModel constant;
+    constantCoeffs
+    {
+        d               1e-4;
+    }
+
+    alphaMax        0.62;
+    residualAlpha   1e-6;
+}
+
+particles2
+{
+    type          purePhaseModel;
+
+    diameterModel constant;
+    constantCoeffs
+    {
+        d               1e-2;
+    }
+
+    alphaMax        0.62;
+    residualAlpha   1e-6;
+}
+
+
+air
+{
+    type          purePhaseModel;
+
+    diameterModel none;
+
+    residualAlpha   0;
+}
+
+blending
+{
+    default
+    {
+        type            continuous;
+        phase           air;
+    }
+    drag
+    {
+        type            linear;
+        minFullyContinuousAlpha.air 0.2;
+        minPartlyContinuousAlpha.air 0.1;
+        minFullyContinuousAlpha.particles1 none;
+        minPartlyContinuousAlpha.particles1 none;
+        minFullyContinuousAlpha.particles2 none;
+        minPartlyContinuousAlpha.particles2 none;
+    }
+}
+
+surfaceTension
+{}
+
+interfaceCompression
+{}
+
+drag
+{
+    particles1_dispersedIn_air
+    {
+        type            GidaspowErgunWenYu;
+        residualRe      1e-3;
+    }
+    particles2_dispersedIn_air
+    {
+        type            GidaspowErgunWenYu;
+        residualRe      1e-3;        
+    }
+    particles1_particles2    
+    {
+        type            solidSolidDrag;
+        gas             air;
+        solid1          particles1;
+        solid2          particles2;
+        E               0.5;
+        Cf              1.0;
+    }
+}
+
+virtualMass
+{}
+
+heatTransfer
+{
+    particles1_dispersedIn_air
+    {
+        type            RanzMarshall;
+        residualAlpha   1e-4;
+    }
+    particles2_dispersedIn_air
+    {
+        type            RanzMarshall;
+        residualAlpha   1e-4;
+    }
+}
+
+phaseTransfer
+{}
+
+lift
+{}
+
+wallLubrication
+{}
+
+turbulentDispersion
+{}
+
+// ************************************************************************* //

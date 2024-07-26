@@ -1,0 +1,39 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: OpenPDAC
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Mattia
+    family-names: de' Michieli Vitturi
+    email: mattia.demichielivitturi@ingv.it
+    name-particle: Mattia de'
+    affiliation: >-
+      Istituto Nazionale di Geofisica e Vulcanologia,
+      Sezione di Pisa
+    orcid: 'https://orcid.org/0000-0002-6750-9245'
+repository-code: 'https://github.com/demichie/OpenPDAC-12/'
+url: 'https://github.com/demichie/OpenPDAC-12/'
+abstract: >
+  OpenPDAC is an OpenFOAM module based on the module
+  multiphaseEuler, distributed with OpenFOAM.
+
+
+  With respect to the original module, in OpenPDAC the
+  equations from the kinetic theory for granular flows are
+  modified to model multiple dispersed solid phases.
+
+
+  In addition, a Lagrangian library is included in the model
+  (one-way coupling with the gas-solid mixture).
+keywords:
+  - volcanic flows
+  - multiphase flows
+  - OpenFOAM
+license: GPL-3.0
+version: '12'
+date-released: '2024-07-26'

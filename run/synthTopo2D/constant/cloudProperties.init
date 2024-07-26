@@ -1,0 +1,221 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  dev
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      cloudProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+type        collidingCloud;
+
+solution
+{
+    coupled         false;
+    transient       yes;
+    cellValueSourceCorrection off;
+    maxCo           0.3;
+
+    sourceTerms
+    {
+        schemes
+        {
+        }
+    }
+
+    interpolationSchemes
+    {
+        rho             cell;
+        U               cellPoint;
+        muMix           cell;
+    }
+
+    integrationSchemes
+    {
+        U               Euler;
+    }
+}
+
+
+constantProperties
+{
+    rho0            2500;
+    youngsModulus   6e8;
+    poissonsRatio   0.35;
+}
+
+
+subModels
+{
+    particleForces
+    {
+        nonSphereDrag
+	{
+            phi    1.0;
+        }
+    }
+
+    injectionModels
+    {
+        model3
+        {
+            type cellZoneInjection;
+            uniformParcelSize nParticle;
+            cellZone total; // Name of cellZone
+            SOI 0.0; // Start Of Injection
+            parcelBasisType fixed; // How are the number of particles calculated
+            nParticle 1;
+            numberDensity 1e-1; // numberDensity multiplied by cellZoneVolume gives the number of particles to be injected
+            duration 5e-5; //cellZoneInjection through this manner is a one time injection, i.e., all the particles will be injected at once
+            U0 (0 0 0); //initial velocity of the particles upon injection
+            sfericity 0.85;
+            sizeDistribution
+            {
+                //type uniform;
+                type fixedValue;
+                fixedValueDistribution
+                {
+                    value        1.0e-01;
+                }
+            }
+            densityDistribution
+            {
+                type        fixedValue;
+                fixedValueDistribution
+                {
+                    value        2300;
+                }
+            }    
+        }
+        model4
+        {
+            type cellZoneInjection;
+            uniformParcelSize nParticle;
+            cellZone total; // Name of cellZone
+            SOI 0.0; // Start Of Injection
+            parcelBasisType fixed; // How are the number of particles calculated
+            nParticle 1;
+            numberDensity 1e-1; // numberDensity multiplied by cellZoneVolume gives the number of particles to be injected
+            duration 5e-5; //cellZoneInjection through this manner is a one time injection, i.e., all the particles will be injected at once
+            U0 (0 0 0); //initial velocity of the particles upon injection
+            sfericity 0.85;
+            sizeDistribution
+            {
+                //type uniform;
+                type fixedValue;
+                fixedValueDistribution
+                {
+                    value        0.5e-01;
+                }
+            }
+            densityDistribution
+            {
+                type        fixedValue;
+                fixedValueDistribution
+                {
+                    value        2000;
+                }
+            }
+        }
+    }
+    
+    dispersionModel none;
+
+//    patchInteractionModel standardWallInteraction;
+// 	standardWallInteractionCoeffs
+//    {
+//        type            stick;
+//    }
+
+    patchInteractionModel localInteraction;
+
+    localInteractionCoeffs
+    {
+        patches
+        (
+            top
+            {
+                type escape;
+            }
+            atm
+            {
+                type escape;
+            }
+            terrain
+            {
+                type stick;
+            }
+            crater
+            {
+                type stick;
+            }
+        );
+    }
+
+
+    surfaceFilmModel none;
+
+    stochasticCollisionModel none;
+
+    //collisionModel pairCollision;
+    collisionModel none;
+
+    pairCollisionCoeffs
+    {
+        // Maximum possible particle diameter expected at any time
+        maxInteractionDistance  0.006;
+
+        writeReferredParticleCloud no;
+
+        pairModel pairSpringSliderDashpot;
+
+        pairSpringSliderDashpotCoeffs
+        {
+            useEquivalentSize   no;
+            alpha               0.12;
+            b                   1.5;
+            mu                  0.52;
+            cohesionEnergyDensity 0;
+            collisionResolutionSteps 12;
+        };
+
+        wallModel    wallLocalSpringSliderDashpot;
+
+        wallLocalSpringSliderDashpotCoeffs
+        {
+            useEquivalentSize no;
+            collisionResolutionSteps 12;
+            walls
+            {
+                youngsModulus   1e10;
+                poissonsRatio   0.23;
+                alpha           0.12;
+                b               1.5;
+                mu              0.43;
+                cohesionEnergyDensity 0;
+            }
+            frontAndBack
+            {
+                youngsModulus   1e10;
+                poissonsRatio   0.23;
+                alpha           0.12;
+                b               1.5;
+                mu              0.1;
+                cohesionEnergyDensity 0;
+            }
+        };
+    }
+}
+
+cloudFunctions
+{}
+
+

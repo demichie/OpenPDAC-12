@@ -1,0 +1,43 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  dev
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      fvConstraints;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+limitp
+{
+    type       limitPressure;
+
+    min        1e4;
+}
+
+
+limitp
+{
+    type            bound;
+
+    field           alpha.particles1;
+
+    min             1.0e-6;
+}
+
+limitp
+{
+    type            bound;
+
+    field           alpha.particles2;
+
+    min             1.0e-6;
+}
+
+
+// ************************************************************************* //

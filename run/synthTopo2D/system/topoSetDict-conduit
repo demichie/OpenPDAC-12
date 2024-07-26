@@ -1,0 +1,133 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  9
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+actions
+(
+    {
+        name    total;
+        type    cellSet;
+        action  new;
+        source surfaceToCell;
+        sourceInfo
+        {
+            file            "./constant/triSurface/surface_total_closed.stl";
+            useSurfaceOrientation true;
+            outsidePoints   ((0 0 2000));
+            includeCut      false;
+            includeInside   true;
+            includeOutside  false;
+            nearDistance    3;
+            curvature       -100;
+        }
+    }
+    {
+        name    total;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+           set  total;
+        }
+    }    
+
+    {
+        name    conduit;
+        type    cellSet;
+        action  new;
+        source surfaceToCell;
+        sourceInfo
+        {
+            file            "./constant/triSurface/surface_conduit_closed.stl";
+            useSurfaceOrientation true;
+            outsidePoints   ((0 0 2000));
+            includeCut      false;
+            includeInside   true;
+            includeOutside  false;
+            nearDistance    -1;
+            curvature       -100;
+        }
+    }
+    {
+        name    conduit;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+           set  conduit;
+        }
+    }    
+    
+
+    {
+        name    crater;
+        type    cellSet;
+        action  new;
+        source surfaceToCell;
+        sourceInfo
+        {
+            file            "./constant/triSurface/surface_crater_closed.stl";
+            useSurfaceOrientation true;
+            outsidePoints   ((0 0 2000));
+            includeCut      false;
+            includeInside   true;
+            includeOutside  false;
+            nearDistance    3;
+            curvature       -100;
+        }
+    }
+    {
+        name    crater;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+           set  crater;
+        }
+    }    
+
+    {
+        name    lagrangian;
+        type    cellSet;
+        action  new;
+        source surfaceToCell;
+        sourceInfo
+        {
+            file            "./constant/triSurface/surface_lagrangian.stl";
+            useSurfaceOrientation true;
+            outsidePoints   ((0 0 2000));
+            includeCut      false;
+            includeInside   true;
+            includeOutside  false;
+            nearDistance    0;
+            curvature       -100;
+        }
+    }
+    {
+        name    lagrangian;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+           set  lagrangian;
+        }
+    }    
+
+);
+
+// ************************************************************************* //

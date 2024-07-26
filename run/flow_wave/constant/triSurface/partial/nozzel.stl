@@ -1,0 +1,17 @@
+solid nozzel
+ facet normal 0 -1 0
+  outer loop
+   vertex -30 20 0
+   vertex 30 20 0
+   vertex 30 20 300
+  endloop
+ endfacet
+ facet normal 0 -1 0
+  outer loop
+   vertex -30 20 300
+   vertex -30 20 0
+   vertex 30 20 300
+  endloop
+ endfacet
+endsolid nozzel
+

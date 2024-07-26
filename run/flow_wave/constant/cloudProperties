@@ -1,0 +1,159 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  dev
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      cloudProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+type        collidingCloud;
+
+solution
+{
+    coupled         false;
+    transient       yes;
+    cellValueSourceCorrection off;
+    maxCo           0.3;
+
+    sourceTerms
+    {
+        schemes
+        {
+        }
+    }
+
+    interpolationSchemes
+    {
+        rho             cell;
+        U               cellPoint;
+        muMix           cell;
+    }
+
+    integrationSchemes
+    {
+        U               Euler;
+    }
+}
+
+
+constantProperties
+{
+    rho0            964;
+    youngsModulus   6e8;
+    poissonsRatio   0.35;
+}
+
+
+subModels
+{
+    particleForces
+    {
+        sphereDrag;
+        gravity;
+    }
+    
+    injectionModels
+    {
+        model1
+        {
+            type            patchInjection;
+            uniformParcelSize nParticle;
+            parcelBasisType fixed;
+            patchName       inlet;
+            U0              (10 0 0);
+            nParticle       1;
+            parcelsPerSecond 1000;
+            sizeDistribution
+            {
+                type        normal;
+                Q 			0;
+                min 		1e-6;
+                max			1000e-6;
+                mu			500e-6; 
+                sigma		300e-6;
+            }
+            flowRateProfile constant 1;
+            massTotal       0;
+            SOI 0;
+            duration 60;
+        }
+    
+    }
+    
+    dispersionModel none;
+
+    patchInteractionModel standardWallInteraction;
+
+ 	standardWallInteractionCoeffs
+    {
+        type            stick;
+    }
+
+    surfaceFilmModel none;
+
+    stochasticCollisionModel none;
+
+    //collisionModel pairCollision;
+    collisionModel none;
+
+    pairCollisionCoeffs
+    {
+        // Maximum possible particle diameter expected at any time
+        maxInteractionDistance  0.006;
+
+        writeReferredParticleCloud no;
+
+        pairModel pairSpringSliderDashpot;
+
+        pairSpringSliderDashpotCoeffs
+        {
+            useEquivalentSize   no;
+            alpha               0.12;
+            b                   1.5;
+            mu                  0.52;
+            cohesionEnergyDensity 0;
+            collisionResolutionSteps 12;
+        };
+
+        wallModel    wallLocalSpringSliderDashpot;
+
+        wallLocalSpringSliderDashpotCoeffs
+        {
+            useEquivalentSize no;
+            collisionResolutionSteps 12;
+            walls
+            {
+                youngsModulus   1e10;
+                poissonsRatio   0.23;
+                alpha           0.12;
+                b               1.5;
+                mu              0.43;
+                cohesionEnergyDensity 0;
+            }
+            frontAndBack
+            {
+                youngsModulus   1e10;
+                poissonsRatio   0.23;
+                alpha           0.12;
+                b               1.5;
+                mu              0.1;
+                cohesionEnergyDensity 0;
+            }
+        };
+    }
+}
+
+
+cloudFunctions
+{}
+
+
