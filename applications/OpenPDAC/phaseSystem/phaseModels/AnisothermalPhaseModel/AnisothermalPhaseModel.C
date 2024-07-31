@@ -167,8 +167,8 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
     const tmp<volScalarField> tcontErr(this->continuityError());
     const volScalarField& contErr(tcontErr());
 
-    tmp<volScalarField> tK(this->K());
-    const volScalarField& K(tK());
+    //tmp<volScalarField> tK(this->K());
+    //const volScalarField& K(tK());
 
     volScalarField& he = this->thermo_->he();
 
@@ -178,13 +178,13 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
       + fvm::div(alphaRhoPhi, he)
       - fvm::Sp(contErr, he)
 
-      + fvc::ddt(alpha, rho, K) + fvc::div(alphaRhoPhi, K)
-      - contErr*K
+      //+ fvc::ddt(alpha, rho, K) + fvc::div(alphaRhoPhi, K)
+      //- contErr*K
 
       + this->divq(he)
      ==
-        alpha*rho*(U&g_)
-      + alpha*this->Qdot()
+        alpha*this->Qdot()
+      //+ alpha*rho*(U&g_)
     );
 
     // Add the appropriate pressure-work term
