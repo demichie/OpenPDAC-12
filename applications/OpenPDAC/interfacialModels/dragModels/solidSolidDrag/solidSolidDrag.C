@@ -93,7 +93,7 @@ Foam::dragModels::solidSolidDrag::KSolidSolid
         * g0_12 * magURel;
         
     volScalarField fractDen = 2.0 * Pi * ( solid1.rho() * pow(solid1.d(), 3.0) 
-        + solid1.rho() * pow(solid2.d(), 3.0) );    
+        + solid2.rho() * pow(solid2.d(), 3.0) );    
 
     return ( fractNum / fractDen );
 }
