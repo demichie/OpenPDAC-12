@@ -23,9 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "NonSphericalGidaspowErgunWenYu.H"
 #include "NonSphericalErgun.H"
-#include "WenYu.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -34,15 +32,15 @@ namespace Foam
 {
 namespace dragModels
 {
-    defineTypeNameAndDebug(NonSphericalGidaspowErgunWenYu, 0);
-    addToRunTimeSelectionTable(dragModel, NonSphericalGidaspowErgunWenYu, dictionary);
+    defineTypeNameAndDebug(NonSphericalErgun, 0);
+    addToRunTimeSelectionTable(dragModel, NonSphericalErgun, dictionary);
 }
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::dragModels::NonSphericalGidaspowErgunWenYu::NonSphericalGidaspowErgunWenYu
+Foam::dragModels::NonSphericalErgun::NonSphericalErgun
 (
     const dictionary& dict,
     const phaseInterface& interface,
@@ -50,26 +48,35 @@ Foam::dragModels::NonSphericalGidaspowErgunWenYu::NonSphericalGidaspowErgunWenYu
 )
 :
     dispersedDragModel(dict, interface, registerObject),
-    sphericity_("sphericity", dimless, dict),
-    NonSphericalErgun_(dict, interface, false),
-    WenYu_(dict, interface, false)
+    sphericity_("sphericity", dimless, dict)    
 {}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::dragModels::NonSphericalGidaspowErgunWenYu::~NonSphericalGidaspowErgunWenYu()
+Foam::dragModels::NonSphericalErgun::~NonSphericalErgun()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::tmp<Foam::volScalarField>
-Foam::dragModels::NonSphericalGidaspowErgunWenYu::CdRe() const
+Foam::tmp<Foam::volScalarField> Foam::dragModels::NonSphericalErgun::CdRe() const
 {
+    const phaseModel& dispersed = interface_.dispersed();
+    const phaseModel& continuous = interface_.continuous();
+    
+    Info << "sphericity = " << sphericity_ << endl;
+
     return
-        pos0(interface_.continuous() - 0.8)*WenYu_.CdRe() / sphericity_
-      + neg(interface_.continuous() - 0.8)*NonSphericalErgun_.CdRe();
+        (4.0/3.0)
+       *(
+            150
+           *max(1.0 - continuous, dispersed.residualAlpha())
+           /max(continuous, continuous.residualAlpha())
+           / sqr(sphericity_)
+          + 1.75*interface_.Re() 
+           / sphericity_
+        );
 }
 
 
