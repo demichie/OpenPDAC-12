@@ -76,7 +76,8 @@ Foam::dragModels::NonSphericalGidaspowErgunWenYu::CdRe() const
             150
            *max(1.0 - continuous, dispersed.residualAlpha())
            /max(continuous, continuous.residualAlpha())
-          + 1.75*interface_.Re()
+           / sqr(sphericity_)
+          + 1.75*interface_.Re() / sphericity_
         );
 
     const volScalarField alpha2
@@ -92,7 +93,7 @@ Foam::dragModels::NonSphericalGidaspowErgunWenYu::CdRe() const
       + pos0(Res - 1000)*0.44*Res
     );
     
-    const volScalarField & WenYu_CdRe = CdsRes
+    const volScalarField & WenYu_CdRe = CdsRes / sphericity_
        *pow(alpha2, -3.65)
        *max(interface_.continuous(), interface_.continuous().residualAlpha());
 
