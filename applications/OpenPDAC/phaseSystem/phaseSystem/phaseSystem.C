@@ -451,7 +451,7 @@ Foam::tmp<Foam::volScalarField> Foam::phaseSystem::alfasMax() const
 
                     Xij = ( 1.0-sqr(rij) )/(2.0-phaseModels_[phasei].alphaMax());
 
-                    Xij = pos0(dj-di)*Xij + neg(dj-di)*(1.0-Xij);
+                    Xij = pos(dj-di)*Xij + neg0(dj-di)*(1.0-Xij);
 
                     if (phasej==phasei)
                     {
