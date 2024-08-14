@@ -22,30 +22,28 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::dragModels::NonSphericalGidaspowErgunWenYu
+    Foam::dragModels::NonSphericalWenYu
 
 Description
-    Gidaspow, Ergun, Wen and Yu drag model
+    Wen and Yu drag model
 
     Reference:
     \verbatim
-        Gidaspow, D. (1994).
-        Multiphase flow and fluidisation: continuum and kinetic theory
-        descriptions.
-        Academic press, New York.
+        Enwald, H., Peirano, E., & Almstedt, A. E. (1996).
+        Eulerian two-phase flow theory applied to fluidisation.
+        International Journal of Multiphase Flow, 22, 21-66.
+        Eq. 86-87, p. 40.
     \endverbatim
 
 SourceFiles
-    NonSphericalGidaspowErgunWenYu.C
+    NonSphericalWenYu.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef NonSphericalGidaspowErgunWenYu_H
-#define NonSphericalGidaspowErgunWenYu_H
+#ifndef NonSphericalWenYu_H
+#define NonSphericalWenYu_H
 
 #include "dispersedDragModel.H"
-#include "NonSphericalErgun.H"
-#include "NonSphericalWenYu.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -55,10 +53,10 @@ namespace dragModels
 {
 
 /*---------------------------------------------------------------------------*\
-                     Class NonSphericalGidaspowErgunWenYu Declaration
+                            Class NonSphericalWenYu Declaration
 \*---------------------------------------------------------------------------*/
 
-class NonSphericalGidaspowErgunWenYu
+class NonSphericalWenYu
 :
     public dispersedDragModel
 {
@@ -67,23 +65,16 @@ class NonSphericalGidaspowErgunWenYu
         //- Particle sphericity
         const dimensionedScalar sphericity_;
 
-        //- Ergun drag model
-        NonSphericalErgun NonSphericalErgun_;
-
-        //- Wen Yu drag model
-        NonSphericalWenYu NonSphericalWenYu_;
-
-
 public:
 
     //- Runtime type information
-    TypeName("NonSphericalGidaspowErgunWenYu");
+    TypeName("NonSphericalWenYu");
 
 
     // Constructors
 
         //- Construct from a dictionary and an interface
-        NonSphericalGidaspowErgunWenYu
+        NonSphericalWenYu
         (
             const dictionary& dict,
             const phaseInterface& interface,
@@ -92,7 +83,7 @@ public:
 
 
     //- Destructor
-    virtual ~NonSphericalGidaspowErgunWenYu();
+    virtual ~NonSphericalWenYu();
 
 
     // Member Functions

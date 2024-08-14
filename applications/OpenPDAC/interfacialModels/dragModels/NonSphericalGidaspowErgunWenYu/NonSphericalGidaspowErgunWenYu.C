@@ -25,7 +25,7 @@ License
 
 #include "NonSphericalGidaspowErgunWenYu.H"
 #include "NonSphericalErgun.H"
-#include "WenYu.H"
+#include "NonSphericalWenYu.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -52,7 +52,7 @@ Foam::dragModels::NonSphericalGidaspowErgunWenYu::NonSphericalGidaspowErgunWenYu
     dispersedDragModel(dict, interface, registerObject),
     sphericity_("sphericity", dimless, dict),
     NonSphericalErgun_(dict, interface, false),
-    WenYu_(dict, interface, false)
+    NonSphericalWenYu_(dict, interface, false)
 {}
 
 
@@ -68,7 +68,7 @@ Foam::tmp<Foam::volScalarField>
 Foam::dragModels::NonSphericalGidaspowErgunWenYu::CdRe() const
 {
     return
-        pos0(interface_.continuous() - 0.8)*WenYu_.CdRe() / sphericity_
+        pos0(interface_.continuous() - 0.8)*NonSphericalWenYu_.CdRe()
       + neg(interface_.continuous() - 0.8)*NonSphericalErgun_.CdRe();
 }
 

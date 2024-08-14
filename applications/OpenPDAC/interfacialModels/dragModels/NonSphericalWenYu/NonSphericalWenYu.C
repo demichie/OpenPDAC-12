@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "NonSphericalErgun.H"
+#include "NonSphericalWenYu.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -32,15 +32,15 @@ namespace Foam
 {
 namespace dragModels
 {
-    defineTypeNameAndDebug(NonSphericalErgun, 0);
-    addToRunTimeSelectionTable(dragModel, NonSphericalErgun, dictionary);
+    defineTypeNameAndDebug(NonSphericalWenYu, 0);
+    addToRunTimeSelectionTable(dragModel, NonSphericalWenYu, dictionary);
 }
 }
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::dragModels::NonSphericalErgun::NonSphericalErgun
+Foam::dragModels::NonSphericalWenYu::NonSphericalWenYu
 (
     const dictionary& dict,
     const phaseInterface& interface,
@@ -54,27 +54,32 @@ Foam::dragModels::NonSphericalErgun::NonSphericalErgun
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-Foam::dragModels::NonSphericalErgun::~NonSphericalErgun()
+Foam::dragModels::NonSphericalWenYu::~NonSphericalWenYu()
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::tmp<Foam::volScalarField> Foam::dragModels::NonSphericalErgun::CdRe() const
+Foam::tmp<Foam::volScalarField> Foam::dragModels::NonSphericalWenYu::CdRe() const
 {
-    const phaseModel& dispersed = interface_.dispersed();
-    const phaseModel& continuous = interface_.continuous();
-    
+    const volScalarField alpha2
+    (
+        max(1.0 - interface_.dispersed(), interface_.continuous().residualAlpha())
+    );
+
+    const volScalarField Res(alpha2*interface_.Re());
+
+    const volScalarField CdsRes
+    (
+        neg(Res - 1000)*24*(1.0 + 0.15*pow(Res, 0.687))
+      + pos0(Res - 1000)*0.44*Res
+    );
+
     return
-        (4.0/3.0)
-       *(
-            150
-           *max(1.0 - continuous, dispersed.residualAlpha())
-           /max(continuous, continuous.residualAlpha())
-           / sqr(sphericity_)
-          + 1.75*interface_.Re() 
-           / sphericity_
-        );
+        CdsRes
+       /sphericity_ 
+       *pow(alpha2, -3.65)
+       *max(interface_.continuous(), interface_.continuous().residualAlpha());
 }
 
 
