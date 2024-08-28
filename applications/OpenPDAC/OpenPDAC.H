@@ -95,6 +95,8 @@ protected:
         //  Defaults to 1
         int nEnergyCorrectors;
 
+        dictionary energyControlDict;
+
         //- Partial elimination drag contribution optimisation
         //  Defaults to false
         Switch lowPressureTimestepCorrection;
@@ -174,6 +176,11 @@ protected:
         //  mapped and used in correctPhi to ensure the corrected phi
         //  has the same divergence
         autoPtr<volScalarField> divU;
+
+
+        // Convergence flag of energy equation    
+        bool convergenceFlag;
+
 
         //- Read controls
         virtual bool read();

@@ -117,7 +117,7 @@ void Foam::solvers::OpenPDAC::energyPredictor()
 
 void Foam::solvers::OpenPDAC::thermophysicalPredictor()
 {
-    if (pimple.thermophysics())
+    if (pimple.thermophysics() && !(pimple.firstIter()) )
     {
         for (int Ecorr=0; Ecorr<nEnergyCorrectors; Ecorr++)
         {
@@ -136,6 +136,49 @@ void Foam::solvers::OpenPDAC::thermophysicalPredictor()
                     << max(phase.thermo().T()).value()
                     << endl;
             }
+            
+            bool checkResidual(true);
+            bool doCheck(false);
+
+            forAll(fluid.anisothermalPhases(), anisothermalPhasei)
+            {
+                const phaseModel& phase =
+                    fluid.anisothermalPhases()[anisothermalPhasei];
+
+                word name(phase.thermo().he().name());
+                const DynamicList<SolverPerformance<scalar>>& sp
+                (
+                    Residuals<scalar>::field(mesh, name)
+                );
+                label n = sp.size();
+                
+                scalar r0 = cmptMax(sp[n-1].initialResidual());
+                Info << name << " initial residual " << r0 << endl;
+                if (energyControlDict.found(name))
+                {
+                    doCheck = true;
+                    scalar residual(energyControlDict.lookup<scalar>(name));
+                    checkResidual = checkResidual && ( r0 <= residual);;          
+                } 
+            }
+            Info << "Iteration " 
+                 << Ecorr+1 
+                 << " Check for intial Energy Residual " 
+                 << checkResidual 
+                 << endl;
+            if (doCheck) 
+            {
+                if ( checkResidual )
+                {
+                    convergenceFlag = true;
+                    break;
+                }
+                else
+                {                   
+                    convergenceFlag = false;
+                }
+                Info << "convergenceFlag = " << convergenceFlag << endl;
+            }            
         }
     }
 }
