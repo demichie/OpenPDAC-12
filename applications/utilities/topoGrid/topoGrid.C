@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
     // Read the vent center coordinates from the dictionary
     const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
     const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
+    const scalar topRatio = topoDict.lookupOrDefault<scalar>("topRatio",1.0);
 
     // Output the file name to the terminal for verification
     Info << "Raster file specified: " << rasterFile << endl;
@@ -160,6 +161,40 @@ int main(int argc, char *argv[])
         dimensionedScalar("zero", dimensionSet(0, 1, 0, 0, 0), 0.0)
     );
 
+    volScalarField Ux
+    (
+        IOobject
+        (
+            "Ux",
+            runTime.name(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("zero", dimensionSet(0, 1, 0, 0, 0), 0.0)
+    );
+    
+    volScalarField Uy
+    (
+        IOobject
+        (
+            "Uy",
+            runTime.name(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("zero", dimensionSet(0, 1, 0, 0, 0), 0.0)
+    );    
+
+    scalar zMin = min(mesh.Cf().component(2)).value();
+    scalar zMax = max(mesh.Cf().component(2)).value();
+    
+    Info << "zMin = " << zMin << endl;
+    Info << "zMax = " << zMax << endl;
+
     // Loop over all cells in the mesh to interpolate elevation values
     forAll(Uz, celli)
     {
@@ -169,13 +204,16 @@ int main(int argc, char *argv[])
         // Get x, y coordinates of the cell center
         scalar x = cellCenter.x();
         scalar y = cellCenter.y();
+        scalar z = cellCenter.z();
+        
+        scalar coeffZ = min(1.0, (zMax-z)/(zMax-zMin));
 
         // Calculate row and column indices in the elevation matrix
         int colIndex = (x - xllcorner) / cellsize;
         int rowIndex = (y - yllcorner) / cellsize;
 
         // Interpolate elevation value
-        if (colIndex >= 0 && colIndex < ncols - 1 && rowIndex >= 0 && rowIndex < nrows - 1)
+        if (colIndex >= 0 && colIndex <= ncols && rowIndex >= 0 && rowIndex <= nrows )
         {
             // Bilinear interpolation
             scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
@@ -193,12 +231,17 @@ int main(int argc, char *argv[])
                 v11 * xLerp * yLerp;
 
             // Assign interpolated value to the volScalarField U
-            Uz[celli] = interpolatedValue;
+            Uz[celli] = coeffZ*interpolatedValue;
+            Ux[celli] = (1.0-coeffZ)*(topRatio-1.0)*x;
+            Uy[celli] = (1.0-coeffZ)*(topRatio-1.0)*y;
+            
         }
         else
         {
             // If outside the raster bounds, set to a default value (e.g., 0)
             Uz[celli] = 0.0;
+            Ux[celli] = 0.0;
+            Uy[celli] = 0.0;
         }
     }
 
@@ -217,13 +260,16 @@ int main(int argc, char *argv[])
             // Get x, y coordinates of the face center
             scalar x = faceCenter.x();
             scalar y = faceCenter.y();
+            scalar z = faceCenter.z();
+
+            scalar coeffZ = min(1.0, (zMax-z)/(zMax-zMin));
 
             // Calculate row and column indices in the elevation matrix
             int colIndex = (x - xllcorner) / cellsize;
             int rowIndex = (y - yllcorner) / cellsize;
 
             // Interpolate elevation value
-            if (colIndex >= 0 && colIndex < ncols - 1 && rowIndex >= 0 && rowIndex < nrows - 1)
+            if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
             {
                 // Bilinear interpolation
                 scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
@@ -241,12 +287,17 @@ int main(int argc, char *argv[])
                     v11 * xLerp * yLerp;
 
                 // Assign interpolated value to the volScalarField U
-                Uz.boundaryFieldRef()[patchi][facei] = interpolatedValue;
+                Uz.boundaryFieldRef()[patchi][facei] = coeffZ * interpolatedValue;
+                Ux.boundaryFieldRef()[patchi][facei] = (1.0-coeffZ)*(topRatio-1.0)*x;
+                Uy.boundaryFieldRef()[patchi][facei] = (1.0-coeffZ)*(topRatio-1.0)*y;
+                
             }
             else
             {
                 // If outside the raster bounds, set to a default value (e.g., 0)
                 Uz.boundaryFieldRef()[patchi][facei] = 0.0;
+                Ux.boundaryFieldRef()[patchi][facei] = 0.0;
+                Uy.boundaryFieldRef()[patchi][facei] = 0.0;
             }
         }
     }
@@ -275,7 +326,7 @@ int main(int argc, char *argv[])
     // Loop over all cells in the mesh to set (X,Y,Z) = (0,0,Uz)
     forAll(U, celli)
     {
-        U[celli] = vector(0.0, 0.0, Uz[celli]);
+        U[celli] = vector(Ux[celli], Uy[celli], Uz[celli]);
     }
 
     // Loop over all boundary faces to set (X,Y,Z) = (0,0,Uz)
@@ -283,7 +334,8 @@ int main(int argc, char *argv[])
     {
         forAll(mesh.boundary()[patchi], facei)
         {
-            U.boundaryFieldRef()[patchi][facei] = vector(0.0, 0.0, Uz.boundaryField()[patchi][facei]);
+            U.boundaryFieldRef()[patchi][facei] = vector(Ux.boundaryField()[patchi][facei],
+                      Uy.boundaryField()[patchi][facei], Uz.boundaryField()[patchi][facei]);
         }
     }        
     
