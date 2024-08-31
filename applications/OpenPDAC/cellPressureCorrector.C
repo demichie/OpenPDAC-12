@@ -351,6 +351,7 @@ void Foam::solvers::OpenPDAC::cellPressureCorrector()
         // Cache p prior to solve for density update
         volScalarField p_rgh_0(p_rgh);
 
+        bool checkResidual(false);
         // Iterate over the pressure equation to correct for non-orthogonality
         while (pimple.correctNonOrthogonal())
         {
@@ -361,27 +362,46 @@ void Foam::solvers::OpenPDAC::cellPressureCorrector()
               - fvm::laplacian(rAf, p_rgh)
             );
 
-            // Solve
-            {
-                fvScalarMatrix pEqn(pEqnIncomp);
-
-                forAll(phases, phasei)
+            if (!checkResidual)
+            { 
+                // Solve
                 {
-                    pEqn += pEqnComps[phasei];
-                }
+                    fvScalarMatrix pEqn(pEqnIncomp);
 
-                if (fluid.incompressible())
-                {
-                    pEqn.setReference
+                    forAll(phases, phasei)
+                    {
+                        pEqn += pEqnComps[phasei];
+                    }
+
+                    if (fluid.incompressible())
+                    {
+                        pEqn.setReference
+                        (
+                            pressureReference.refCell(),
+                            pressureReference.refValue()
+                        );
+                    }
+
+                    fvConstraints().constrain(pEqn);
+
+                    pEqn.solve();
+                
+                    const DynamicList<SolverPerformance<scalar>>& sp
                     (
-                        pressureReference.refCell(),
-                        pressureReference.refValue()
+                        Residuals<scalar>::field(mesh, "p_rgh")
                     );
-                }
-
-                fvConstraints().constrain(pEqn);
-
-                pEqn.solve();
+                    label n = sp.size();
+                    scalar r0 = cmptMax(sp[n-1].initialResidual());
+                    // Info << " p_rgh initial residual " << r0 << endl;
+                    // Info << checkResidual << endl;
+                    if ( r0 <= nonOrthogonalResidual ) 
+                    {
+                        checkResidual = true;
+                        Info << "NonOrthogonal convergence "
+                             << checkResidual << endl;
+                    
+                    }  
+                } 
             }
 
             // Correct fluxes and velocities on last non-orthogonal iteration

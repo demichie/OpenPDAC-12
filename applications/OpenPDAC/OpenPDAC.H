@@ -100,6 +100,8 @@ protected:
         //- Partial elimination drag contribution optimisation
         //  Defaults to false
         Switch lowPressureTimestepCorrection;
+        
+        scalar nonOrthogonalResidual;
 
     //- Optional LTS reciprocal time-step field
     tmp<volScalarField> trDeltaT;

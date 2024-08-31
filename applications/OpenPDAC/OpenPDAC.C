@@ -67,6 +67,10 @@ bool Foam::solvers::OpenPDAC::read()
     lowPressureTimestepCorrection =     
         pimple.dict().lookupOrDefault<Switch>("lowPressureTimestepCorrection", false);        
 
+    nonOrthogonalResidual =     
+        pimple.dict().lookupOrDefault<scalar>("nonOrthogonalResidual", 0.0);        
+
+
     if (pimple.dict().found("energyControl"))
             {
                 energyControlDict = pimple.dict().subDict("energyControl");
