@@ -131,10 +131,9 @@ PIMPLE
     nCorrectors         3;
     nNonOrthogonalCorrectors 3;
     nEnergyCorrectors   3;
-    faceMomentum        on;
+    faceMomentum        yes;
     hydrostaticInitialisation false;
     nHydrostaticCorrectors 20;
-    partialElimination  true;
 }
 
 relaxationFactors
