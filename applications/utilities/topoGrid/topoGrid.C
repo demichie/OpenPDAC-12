@@ -202,6 +202,9 @@ int main(int argc, char *argv[])
     Info << "zMin = " << zMin << endl;
     Info << "zMax = " << zMax << endl;
 
+    scalar z2Rel(0.0);
+    scalar zNew(0.0);
+
     // Loop over all cells in the mesh to interpolate elevation values
     forAll(Uz, celli)
     {
@@ -220,7 +223,7 @@ int main(int argc, char *argv[])
         int rowIndex = (y - yllcorner) / cellsize;
 
         // Interpolate elevation value
-        if (colIndex >= 0 && colIndex <= ncols && rowIndex >= 0 && rowIndex <= nrows )
+        if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
         {
             // Bilinear interpolation
             scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
@@ -238,10 +241,34 @@ int main(int argc, char *argv[])
                 v11 * xLerp * yLerp;
 
             // Assign interpolated value to the volScalarField U
-            Uz[celli] = zRel*zInterp;
-            Ux[celli] = (1.0-zRel)*(expFactor-1.0)*x;
-            Uy[celli] = (1.0-zRel)*(expFactor-1.0)*y;
-            
+            Uz[celli] = zRel * zInterp;
+                
+            zNew = z + zRel * zInterp;
+                
+            if ( z>= 0.0)
+            {
+                if (dzVert > 0)
+                {
+                    // enlarge from a fixed height above the maximum
+                    // topography and the top, thus from an horizontal
+                    // plane to the top
+                    z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+                }
+                else
+                {
+                    // enlarge from the topography to the top
+                    z2Rel = (zNew - zInterp) / (zMax - zInterp);                
+                }
+                z2Rel = std::pow(z2Rel,exp_shape);
+                
+                Ux[celli] = z2Rel*(expFactor-1.0)*x;
+                Uy[celli] = z2Rel*(expFactor-1.0)*y;
+            }
+            else
+            {
+                Ux[celli] = 0.0;
+                Uy[celli] = 0.0;
+            }        
         }
         else
         {
@@ -252,8 +279,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    scalar z2Rel(0.0);
-    scalar zNew(0.0);
 
     // Loop over all boundary faces to interpolate elevation values
     forAll(mesh.boundary(), patchi)
