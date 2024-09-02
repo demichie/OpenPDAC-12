@@ -62,7 +62,9 @@ int main(int argc, char *argv[])
     // Read the vent center coordinates from the dictionary
     const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
     const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
-    const scalar topRatio = topoDict.lookupOrDefault<scalar>("topRatio",1.0);
+    const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
+    const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
+    const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
 
     // Output the file name to the terminal for verification
     Info << "Raster file specified: " << rasterFile << endl;
@@ -129,6 +131,11 @@ int main(int argc, char *argv[])
             elevation(i, j) = value;
         }
     }
+
+    double maxTopo(max(elevation));
+    // double minTopo(max(elevation));
+
+    scalar zVert(maxTopo + dzVert);
 
     file.close();
 
@@ -206,7 +213,7 @@ int main(int argc, char *argv[])
         scalar y = cellCenter.y();
         scalar z = cellCenter.z();
         
-        scalar coeffZ = min(1.0, (zMax-z)/(zMax-zMin));
+        scalar zRel = min(1.0, (zMax-z)/(zMax-zMin));
 
         // Calculate row and column indices in the elevation matrix
         int colIndex = (x - xllcorner) / cellsize;
@@ -224,16 +231,16 @@ int main(int argc, char *argv[])
             scalar v10 = elevation(rowIndex + 1, colIndex);
             scalar v11 = elevation(rowIndex + 1, colIndex + 1);
 
-            scalar interpolatedValue = 
+            scalar zInterp = 
                 v00 * (1 - xLerp) * (1 - yLerp) +
                 v01 * xLerp * (1 - yLerp) +
                 v10 * (1 - xLerp) * yLerp +
                 v11 * xLerp * yLerp;
 
             // Assign interpolated value to the volScalarField U
-            Uz[celli] = coeffZ*interpolatedValue;
-            Ux[celli] = (1.0-coeffZ)*(topRatio-1.0)*x;
-            Uy[celli] = (1.0-coeffZ)*(topRatio-1.0)*y;
+            Uz[celli] = zRel*zInterp;
+            Ux[celli] = (1.0-zRel)*(expFactor-1.0)*x;
+            Uy[celli] = (1.0-zRel)*(expFactor-1.0)*y;
             
         }
         else
@@ -245,6 +252,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    scalar z2Rel(0.0);
+    scalar zNew(0.0);
 
     // Loop over all boundary faces to interpolate elevation values
     forAll(mesh.boundary(), patchi)
@@ -262,7 +271,7 @@ int main(int argc, char *argv[])
             scalar y = faceCenter.y();
             scalar z = faceCenter.z();
 
-            scalar coeffZ = min(1.0, (zMax-z)/(zMax-zMin));
+            scalar zRel = max(0.0,min(1.0, (zMax-z)/(zMax-zMin)));
 
             // Calculate row and column indices in the elevation matrix
             int colIndex = (x - xllcorner) / cellsize;
@@ -280,17 +289,41 @@ int main(int argc, char *argv[])
                 scalar v10 = elevation(rowIndex + 1, colIndex);
                 scalar v11 = elevation(rowIndex + 1, colIndex + 1);
 
-                scalar interpolatedValue = 
+                scalar zInterp = 
                     v00 * (1 - xLerp) * (1 - yLerp) +
                     v01 * xLerp * (1 - yLerp) +
                     v10 * (1 - xLerp) * yLerp +
                     v11 * xLerp * yLerp;
 
                 // Assign interpolated value to the volScalarField U
-                Uz.boundaryFieldRef()[patchi][facei] = coeffZ * interpolatedValue;
-                Ux.boundaryFieldRef()[patchi][facei] = (1.0-coeffZ)*(topRatio-1.0)*x;
-                Uy.boundaryFieldRef()[patchi][facei] = (1.0-coeffZ)*(topRatio-1.0)*y;
+                Uz.boundaryFieldRef()[patchi][facei] = zRel * zInterp;
                 
+                zNew = z + zRel * zInterp;
+                
+                if ( z>= 0.0)
+                {
+                    if (dzVert > 0)
+                    {
+                        // enlarge from a fixed height above the maximum
+                        // topography and the top, thus from an horizontal
+                        // plane to the top
+                        z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+                    }
+                    else
+                    {
+                        // enlarge from the topography to the top
+                        z2Rel = (zNew - zInterp) / (zMax - zInterp);                
+                    }
+                    z2Rel = std::pow(z2Rel,exp_shape);
+                
+                    Ux.boundaryFieldRef()[patchi][facei] = z2Rel*(expFactor-1.0)*x;
+                    Uy.boundaryFieldRef()[patchi][facei] = z2Rel*(expFactor-1.0)*y;
+                }
+                else
+                {
+                    Ux.boundaryFieldRef()[patchi][facei] = 0.0;
+                    Uy.boundaryFieldRef()[patchi][facei] = 0.0;
+                }        
             }
             else
             {
