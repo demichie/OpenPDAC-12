@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
     const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
     const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
     const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
+    const scalar dzTop = topoDict.lookupOrDefault<scalar>("dzTop",0.0);
     const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
     const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
 
@@ -201,6 +202,12 @@ int main(int argc, char *argv[])
     
     Info << "zMin = " << zMin << endl;
     Info << "zMax = " << zMax << endl;
+    
+    if ( dzTop > 0 )
+    {
+        zMax -= dzTop;
+        Info << "modified zMax = " << zMax << endl;    
+    }
 
     scalar z2Rel(0.0);
     scalar zNew(0.0);
@@ -252,12 +259,12 @@ int main(int argc, char *argv[])
                     // enlarge from a fixed height above the maximum
                     // topography and the top, thus from an horizontal
                     // plane to the top
-                    z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+                    z2Rel = max(0, (zNew - zVert) / (zMax + dzTop - zVert));
                 }
                 else
                 {
                     // enlarge from the topography to the top
-                    z2Rel = (zNew - zInterp) / (zMax - zInterp);                
+                    z2Rel = (zNew - zInterp) / (zMax + dzTop - zInterp);
                 }
                 z2Rel = std::pow(z2Rel,exp_shape);
                 
@@ -332,12 +339,12 @@ int main(int argc, char *argv[])
                         // enlarge from a fixed height above the maximum
                         // topography and the top, thus from an horizontal
                         // plane to the top
-                        z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+                        z2Rel = max(0, (zNew - zVert) / (zMax + dzTop - zVert));
                     }
                     else
                     {
                         // enlarge from the topography to the top
-                        z2Rel = (zNew - zInterp) / (zMax - zInterp);                
+                        z2Rel = (zNew - zInterp) / (zMax + dzTop - zInterp);
                     }
                     z2Rel = std::pow(z2Rel,exp_shape);
                 
