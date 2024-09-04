@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
             if (value == NODATA_value)
                 value = 0.0;  // Handle NODATA_value appropriately
 
-            elevation(i, j) = value;
+            elevation(nrows-1-i, j) = value;
         }
     }
 
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
             runTime.name(),
             mesh,
             IOobject::NO_READ,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh,
         dimensionedScalar("zero", dimensionSet(0, 1, 0, 0, 0), 0.0)
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
             runTime.name(),
             mesh,
             IOobject::NO_READ,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh,
         dimensionedScalar("zero", dimensionSet(0, 1, 0, 0, 0), 0.0)
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
             runTime.name(),
             mesh,
             IOobject::NO_READ,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh,
         dimensionedScalar("zero", dimensionSet(0, 1, 0, 0, 0), 0.0)
@@ -366,19 +366,13 @@ int main(int argc, char *argv[])
             }
         }
     }
-
-
-    // Write the volScalarField to file
-    Uz.write();
-
-    Info << "Interpolated elevation field 'Uz' with length dimensions has been saved." << endl;
     
     // Now create a volVectorField V, with (X,Y,Z) = (0,0,U)
-    volVectorField U
+    volVectorField Udeform
     (
         IOobject
         (
-            "U",
+            "Udeform",
             runTime.name(),
             mesh,
             IOobject::NO_READ,
@@ -389,9 +383,9 @@ int main(int argc, char *argv[])
     );
     
     // Loop over all cells in the mesh to set (X,Y,Z) = (0,0,Uz)
-    forAll(U, celli)
+    forAll(Udeform, celli)
     {
-        U[celli] = vector(Ux[celli], Uy[celli], Uz[celli]);
+        Udeform[celli] = vector(Ux[celli], Uy[celli], Uz[celli]);
     }
 
     // Loop over all boundary faces to set (X,Y,Z) = (0,0,Uz)
@@ -399,14 +393,14 @@ int main(int argc, char *argv[])
     {
         forAll(mesh.boundary()[patchi], facei)
         {
-            U.boundaryFieldRef()[patchi][facei] = vector(Ux.boundaryField()[patchi][facei],
+            Udeform.boundaryFieldRef()[patchi][facei] = vector(Ux.boundaryField()[patchi][facei],
                       Uy.boundaryField()[patchi][facei], Uz.boundaryField()[patchi][facei]);
         }
     }        
     
     pointField newPoints
     (
-        zeroPoints + pInterp.interpolate(U)().primitiveField()
+        zeroPoints + pInterp.interpolate(Udeform)().primitiveField()
     );
 
     mesh.setPoints(newPoints);
