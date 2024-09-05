@@ -17,9 +17,8 @@ FoamFile
 
 rasterFile synthDEM.asc;
 xVent -140.0;
-expFactor 1.3;
+expFactor 2.0;
 dzVert 100.0;
-dzTop 50.0;
 exp_shape 2.0;
 
 // ************************************************************************* //
