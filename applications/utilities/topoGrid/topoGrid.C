@@ -68,28 +68,28 @@ vector computeNormal(const point& p1, const point& p2, const point& p3)
 void writeBinaryTriangle(std::ofstream& stlFile, const vector& normal, const point& p1, const point& p2, const point& p3)
 {
     // Write normal vector (12 bytes: 3 floats)
-    stlFile.write(reinterpret_cast<const char*>(&normal.x()), sizeof(float));
-    stlFile.write(reinterpret_cast<const char*>(&normal.y()), sizeof(float));
-    stlFile.write(reinterpret_cast<const char*>(&normal.z()), sizeof(float));
+    stlFile.write(reinterpret_cast<const char*>(&normal.x()), 4);
+    stlFile.write(reinterpret_cast<const char*>(&normal.y()), 4);
+    stlFile.write(reinterpret_cast<const char*>(&normal.z()), 4);
 
     // Write vertex 1 (12 bytes: 3 floats)
-    stlFile.write(reinterpret_cast<const char*>(&p1.x()), sizeof(float));
-    stlFile.write(reinterpret_cast<const char*>(&p1.y()), sizeof(float));
-    stlFile.write(reinterpret_cast<const char*>(&p1.z()), sizeof(float));
+    stlFile.write(reinterpret_cast<const char*>(&p1.x()), 4);
+    stlFile.write(reinterpret_cast<const char*>(&p1.y()), 4);
+    stlFile.write(reinterpret_cast<const char*>(&p1.z()), 4);
 
     // Write vertex 2 (12 bytes: 3 floats)
-    stlFile.write(reinterpret_cast<const char*>(&p2.x()), sizeof(float));
-    stlFile.write(reinterpret_cast<const char*>(&p2.y()), sizeof(float));
-    stlFile.write(reinterpret_cast<const char*>(&p2.z()), sizeof(float));
+    stlFile.write(reinterpret_cast<const char*>(&p2.x()), 4);
+    stlFile.write(reinterpret_cast<const char*>(&p2.y()), 4);
+    stlFile.write(reinterpret_cast<const char*>(&p2.z()), 4);
 
     // Write vertex 3 (12 bytes: 3 floats)
-    stlFile.write(reinterpret_cast<const char*>(&p3.x()), sizeof(float));
-    stlFile.write(reinterpret_cast<const char*>(&p3.y()), sizeof(float));
-    stlFile.write(reinterpret_cast<const char*>(&p3.z()), sizeof(float));
+    stlFile.write(reinterpret_cast<const char*>(&p3.x()), 4);
+    stlFile.write(reinterpret_cast<const char*>(&p3.y()), 4);
+    stlFile.write(reinterpret_cast<const char*>(&p3.z()), 4);
 
     // Write attribute byte count (2 bytes, set to 0)
-    uint16_t attributeByteCount = 0;
-    stlFile.write(reinterpret_cast<const char*>(&attributeByteCount), sizeof(uint16_t));
+    char attribute[2] = "0";
+    stlFile.write(attribute,2);
 }
 
 
@@ -114,7 +114,7 @@ void writeBinarySTL(const word& stlFileName, const RectangularMatrix<scalar>& el
     label numTriangles = 2 * (numRows - 1) * (numCols - 1);
     
     // Write the number of triangles (4 bytes)
-    stlFile.write(reinterpret_cast<const char*>(&numTriangles), sizeof(uint32_t));
+    stlFile.write(reinterpret_cast<const char*>(&numTriangles), 4);
 
     // Loop over each cell in the grid and create two triangles per cell
     for (label i = 0; i < numRows - 1; ++i)
@@ -129,6 +129,7 @@ void writeBinarySTL(const word& stlFileName, const RectangularMatrix<scalar>& el
 
             // First triangle (p1, p2, p3)
             vector normal1 = computeNormal(p1, p2, p3);
+            // Info << p1 << p2 << p3 << normal1 << endl;
             writeBinaryTriangle(stlFile, normal1, p1, p2, p3);
 
             // Second triangle (p2, p4, p3)
@@ -226,6 +227,7 @@ int main(int argc, char *argv[])
     const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
     const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
     const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
+    const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
 
     // Output the file name to the terminal for verification
     Info << "Raster file specified: " << rasterFile << endl;
@@ -301,7 +303,15 @@ int main(int argc, char *argv[])
         Info << "Saving STL file: " << stlFileName << endl;
 
         // Write the STL surface to a file
-        writeSTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);
+        
+        if (saveBinary)
+        {        
+            writeBinarySTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);
+        }
+        else
+        {
+            writeSTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);        
+        }
         Info << "Saving completed" << endl;
 
     }
