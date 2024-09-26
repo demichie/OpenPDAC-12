@@ -100,6 +100,8 @@ protected:
         //- Partial elimination drag contribution optimisation
         //  Defaults to false
         Switch lowPressureTimestepCorrection;
+
+        scalar innerResidual;
         
         scalar nonOrthogonalResidual;
 
@@ -182,7 +184,6 @@ protected:
 
         // Convergence flag of energy equation    
         bool convergenceFlag;
-
 
         //- Read controls
         virtual bool read();

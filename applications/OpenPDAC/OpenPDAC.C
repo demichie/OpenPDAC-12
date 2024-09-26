@@ -70,6 +70,8 @@ bool Foam::solvers::OpenPDAC::read()
     nonOrthogonalResidual =     
         pimple.dict().lookupOrDefault<scalar>("nonOrthogonalResidual", 0.0);        
 
+    innerResidual =     
+        pimple.dict().lookupOrDefault<scalar>("innerResidual", 0.0);        
 
     if (pimple.dict().found("energyControl"))
             {

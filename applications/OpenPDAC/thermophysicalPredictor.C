@@ -98,8 +98,8 @@ void Foam::solvers::OpenPDAC::energyPredictor()
         (
             phase.heEqn()
          ==
-           *heatTransfer[phase.name()]
-          + fvModels().source(alpha, rho, phase.thermo().he())
+           *heatTransfer[phase.name()] +
+          fvModels().source(alpha, rho, phase.thermo().he())
         );
 
         EEqn.relax();

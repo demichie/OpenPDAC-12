@@ -161,6 +161,9 @@ void Foam::solvers::OpenPDAC::facePressureCorrector()
     PtrList<volScalarField> dmdts(fluid.dmdts());
     PtrList<volScalarField> d2mdtdps(fluid.d2mdtdps());
 
+    bool checkInnerResidual(false);
+    scalar r0(0.0);
+    scalar r0Inner(0.0);
     // --- Pressure corrector loop
     while (pimple.correct())
     {
@@ -304,7 +307,7 @@ void Foam::solvers::OpenPDAC::facePressureCorrector()
               - fvm::laplacian(rAf, p_rgh)
             );
 
-            if (!checkResidual)
+            if ((!checkResidual) && (!checkInnerResidual))
             {      
                 // Solve
                 {
@@ -333,7 +336,7 @@ void Foam::solvers::OpenPDAC::facePressureCorrector()
                         Residuals<scalar>::field(mesh, "p_rgh")
                     );
                     label n = sp.size();
-                    scalar r0 = cmptMax(sp[n-1].initialResidual());
+                    r0 = cmptMax(sp[n-1].initialResidual());
                     // Info << " p_rgh initial residual " << r0 << endl;
                     // Info << checkResidual << endl;  
                     if ( r0 <= nonOrthogonalResidual ) 
@@ -344,6 +347,11 @@ void Foam::solvers::OpenPDAC::facePressureCorrector()
                     
                     }  
                 }              
+            }
+
+            if (pimple.firstNonOrthogonalIter())
+            {
+                r0Inner = r0;
             }
 
             // Correct fluxes and velocities on last non-orthogonal iteration
@@ -385,62 +393,77 @@ void Foam::solvers::OpenPDAC::facePressureCorrector()
             }
         }
 
-        // Update and limit the static pressure
-        p = p_rgh + rho*buoyancy.gh;
-        // p = p_rgh + rho*buoyancy.gh + buoyancy.pRef;
-        fvConstraints().constrain(p);
+	if ( !checkInnerResidual )
+        { 
 
-        // Account for static pressure reference
-        if (p_rgh.needReference() && fluid.incompressible())
-        {
-            p += dimensionedScalar
-            (
-                "p",
-                p.dimensions(),
-                pressureReference.refValue()
-              - getRefCellValue(p, pressureReference.refCell())
-            );
-        }
+            // Update and limit the static pressure
+            p = p_rgh + rho*buoyancy.gh;
+            // p = p_rgh + rho*buoyancy.gh + buoyancy.pRef;
+            fvConstraints().constrain(p);
 
-        Info<< "p, min, max = " << min(p).value() << " " << max(p).value() << endl;
+            // Account for static pressure reference
+            if (p_rgh.needReference() && fluid.incompressible())
+            {
+                p += dimensionedScalar
+                (
+                    "p",
+                    p.dimensions(),
+                    pressureReference.refValue()
+                  - getRefCellValue(p, pressureReference.refCell())
+                );
+            }
 
-        if (lowPressureTimestepCorrection)
-        {
-            p_ratio = max(0.01,min(p).value() /p.weightedAverage(mesh_.V()).value());
-            Info<< "p_ratio = " << p_ratio << endl;
-        }
+            Info<< "p, min, max = " << min(p).value() << " " << max(p).value() << endl;
+        
+        
+            if (lowPressureTimestepCorrection)
+            {
+                p_ratio = max(0.01,min(p).value() /p.weightedAverage(mesh_.V()).value());
+                Info<< "p_ratio = " << p_ratio << endl;
+            }
                 
-        // Limit p_rgh
-        p_rgh = p - rho*buoyancy.gh;
-        // p_rgh = p - rho*buoyancy.gh - buoyancy.pRef;
+            // Limit p_rgh
+            p_rgh = p - rho*buoyancy.gh;
+            // p_rgh = p - rho*buoyancy.gh - buoyancy.pRef;
 
-        // Update densities from change in p_rgh
-        forAll(phases, phasei)
-        {
-            phaseModel& phase = phases_[phasei];
-            if (!phase.incompressible())
+            // Update densities from change in p_rgh
+            forAll(phases, phasei)
             {
-                phase.rho() += phase.fluidThermo().psi()*(p_rgh - p_rgh_0);
+                phaseModel& phase = phases_[phasei];
+                if (!phase.incompressible())
+                {
+                    phase.rho() += phase.fluidThermo().psi()*(p_rgh - p_rgh_0);
+                }
             }
-        }
 
-        // Update mass transfer rates for change in p_rgh
-        forAll(phases, phasei)
-        {
-            if (dmdts.set(phasei) && d2mdtdps.set(phasei))
+            // Update mass transfer rates for change in p_rgh
+            forAll(phases, phasei)
             {
-                dmdts[phasei] += d2mdtdps[phasei]*(p_rgh - p_rgh_0);
+                if (dmdts.set(phasei) && d2mdtdps.set(phasei))
+                {
+                    dmdts[phasei] += d2mdtdps[phasei]*(p_rgh - p_rgh_0);
+                }
             }
-        }
 
-        // Correct p_rgh for consistency with p and the updated densities
-        rho = fluid.rho();
-        p_rgh = p - rho*buoyancy.gh;
-        // p_rgh = p - rho*buoyancy.gh - buoyancy.pRef;
+            // Correct p_rgh for consistency with p and the updated densities
+            rho = fluid.rho();
+            p_rgh = p - rho*buoyancy.gh;
+            // p_rgh = p - rho*buoyancy.gh - buoyancy.pRef;
+        
+        }
         p_rgh.correctBoundaryConditions();
+
+        if ( ( r0Inner <= innerResidual ) && ( !checkInnerResidual ) )
+        {
+            checkInnerResidual = true;
+            Info << "Innerloop convergence "
+            << checkInnerResidual << endl;
+        } 
+
     }
 
     UEqns.clear();
+
 }
 
 
