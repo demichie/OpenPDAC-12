@@ -97,9 +97,9 @@ heatTransfer() const
 
             const volScalarField phaseK
             (
-                iter.otherPhase()
-               /max(iter.otherPhase(), iter.otherPhase().residualAlpha())
-               *K
+               //  iter.otherPhase()
+               // /max(iter.otherPhase(), iter.otherPhase().residualAlpha())*
+               K
             );
 
             *eqns[phase.name()] +=
