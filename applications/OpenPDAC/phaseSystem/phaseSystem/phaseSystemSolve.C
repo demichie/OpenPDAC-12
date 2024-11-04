@@ -487,6 +487,7 @@ void Foam::phaseSystem::solve(const PtrList<volScalarField>& rAs)
             forAll(solvePhases, solvePhasei)
             {
                 phaseModel& phase = solvePhases[solvePhasei];
+                fvConstraints().constrain(phase);
 
                 Info<< phase.name() << " fraction mean, min, max = "
                     << phase.weightedAverage(mesh_.V()).value()
