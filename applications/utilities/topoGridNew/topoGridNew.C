@@ -36,7 +36,8 @@ Description
 #include "IOstreams.H"
 #include <cstring>
 #include "Pstream.H"
-
+#include "tetPointRef.H"
+#include "OFstream.H"
 
 using namespace Foam;
 
@@ -202,25 +203,74 @@ void writeSTL(const word& stlFileName, const RectangularMatrix<scalar>& elevatio
 
 
 
+scalar minQuality
+(
+    const polyMesh& mesh,
+    const point& cC,
+    const label fI,
+    const bool isOwner,
+    const label faceBasePtI
+)
+{
+    // Does fan decomposition of face (starting at faceBasePti) and determines
+    // min quality over all resulting tets.
+
+    const pointField& pPts = mesh.points();
+    const face& f = mesh.faces()[fI];
+    const point& tetBasePt = pPts[f[faceBasePtI]];
+
+    scalar thisBaseMinTetQuality = vGreat;
+
+    for (label tetPtI = 1; tetPtI < f.size() - 1; tetPtI++)
+    {
+        label facePtI = (tetPtI + faceBasePtI) % f.size();
+        label otherFacePtI = f.fcIndex(facePtI);
+
+        label ptAI = -1;
+        label ptBI = -1;
+
+        if (isOwner)
+        {
+            ptAI = f[facePtI];
+            ptBI = f[otherFacePtI];
+        }
+        else
+        {
+            ptAI = f[otherFacePtI];
+            ptBI = f[facePtI];
+        }
+
+        const point& pA = pPts[ptAI];
+        const point& pB = pPts[ptBI];
+
+        tetPointRef tet(cC, tetBasePt, pA, pB);
+
+        scalar tetQuality = tet.quality();
+
+        if (tetQuality < thisBaseMinTetQuality)
+        {
+            thisBaseMinTetQuality = tetQuality;
+        }
+    }
+    return thisBaseMinTetQuality;
+}
+
+
+
 //---------------------------------------------------------------
-scalar inverseDistanceInterpolationDz(const point& internalPoint, const scalarField& boundaryPointsX, const scalarField& boundaryPointsY, const scalarField& boundaryPointsZ, const scalarField& boundaryDz, const scalarField& boundaryAreas, const scalarField& maskPoints)
+scalar inverseDistanceInterpolationDz(const scalar& Ldef, const scalar& alpha, const point& internalPoint, const scalarField& boundaryPointsX, const scalarField& boundaryPointsY, const scalarField& boundaryPointsZ, const scalarField& boundaryDz, const scalarField& boundaryAreas)
 {
 
     scalar interpolatedDz(0.0);
 
-    scalar Ldef = 2000.0;
     scalar a = 3;
     scalar b = 5;
-
-    scalar gamma = 5.0;
 
     // Initialize weights and distance array
     scalarField distances(boundaryDz.size());
     scalarField weights(boundaryDz.size());
 
-    scalarField a_n(maskPoints*boundaryAreas / sum(maskPoints*boundaryAreas));
-
-    if ( internalPoint.z() > 0.0 )
+    if ( internalPoint.z() > SMALL )
     {
         distances = sqrt( sqr(internalPoint.x()-boundaryPointsX) + sqr(internalPoint.y()-boundaryPointsY)  + sqr(internalPoint.z()-boundaryPointsZ));
     }
@@ -230,10 +280,8 @@ scalar inverseDistanceInterpolationDz(const point& internalPoint, const scalarFi
     }
 
     scalar minValue = min(distances);
-    scalar dzMean = sum(a_n*boundaryDz);
-    scalar alpha = gamma / Ldef * max( mag( boundaryDz - dzMean ) );
 
-    if ( minValue < 1.e-7 ) 
+    if ( minValue < SMALL ) 
     {
         label minIndex = findIndex(distances, minValue);   
         interpolatedDz = boundaryDz[minIndex];    
@@ -241,74 +289,52 @@ scalar inverseDistanceInterpolationDz(const point& internalPoint, const scalarFi
     else
     {
         weights = boundaryAreas * ( pow((Ldef / distances), a) + pow((alpha * Ldef / distances), b) );  
-        interpolatedDz = sum(maskPoints*weights*boundaryDz)/sum(maskPoints*weights);   
+        interpolatedDz = sum(weights*boundaryDz)/sum(weights);   
     }
 
     return interpolatedDz;
 }
 
 
-// Function for inverse distance interpolation
-vector inverseDistanceInterpolation(const point& internalPoint, const List<point>& boundaryPoints, const List<vector>& boundaryNormals)
+Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(const point& internalPoint, const scalarField& boundaryPointsX, const scalarField& boundaryPointsY, const scalarField& boundaryArea, const scalarField& boundaryDz)
 {
-    scalar Ldef = 1.5;
-    scalar alpha = 0.25;
-    scalar a = 3;
-    scalar b = 5;
+
+    scalar interpolatedDz(0.0);
+    scalar interpolatedArea(0.0);
+
+    scalar a = 1.0;
 
     // Initialize weights and distance array
-    List<scalar> distances(boundaryPoints.size());
-    List<scalar> weights(boundaryPoints.size());
+    scalarField distances(boundaryDz.size());
+    scalarField weights(boundaryDz.size());
 
-    // Compute the distance between the internal point and each boundary point
-    forAll(boundaryPoints, i)
+    distances = sqrt( sqr(internalPoint.x()-boundaryPointsX) + sqr(internalPoint.y()-boundaryPointsY) );
+
+    scalar minValue = min(distances);
+
+    if ( minValue < SMALL ) 
     {
-        distances[i] = mag(internalPoint - boundaryPoints[i]);
+        label minIndex = findIndex(distances, minValue);   
+        interpolatedDz = boundaryDz[minIndex];    
+        interpolatedDz = boundaryArea[minIndex];    
+    }
+    else
+    {
+        weights = pow((1.0 / distances), a);  
+        weights *= neg( distances - 4.0*minValue);
+        interpolatedDz = sum(weights*boundaryDz)/sum(weights);   
+        interpolatedArea = sum(weights*boundaryArea)/sum(weights);   
     }
 
-    // Compute the weights based on inverse distance
-    forAll(weights, i)
-    {
-      //weights[i] = pow(Ldef / distances[i], a) + pow(alpha * Ldef / distances[i], b);
-      //      weights[i] = pow(static_cast<double>(Ldef / distances[i]), static_cast<double>(a)) 
-        //           + pow(static_cast<double>(alpha * Ldef / distances[i]), static_cast<double>(b));
-        //      weights[i] = pow(static_cast<double>(Ldef / distances[i]), static_cast<double>(a))
-        // + pow(static_cast<double>(alpha * Ldef / distances[i]), static_cast<double>(b));
+    Tuple2<scalar, scalar> result(interpolatedDz, interpolatedArea);
+   
 
-        //      weights[i] = pow(static_cast<double>(Ldef / static_cast<double>(distances[i])), static_cast<double>(a))
-        //           + pow(static_cast<double>(alpha * Ldef / static_cast<double>(distances[i])), static_cast<double>(b));
-
-      weights[i] = std::pow(static_cast<double>(Ldef / distances[i]), static_cast<double>(a))
-           + std::pow(static_cast<double>(alpha * Ldef / distances[i]), static_cast<double>(b));
-
-      
-    }
-
-    // Normalize weights
-    scalar sumWeights = 0;
-    forAll(weights, i)
-    {
-        sumWeights += weights[i];
-    }
-
-    if (sumWeights > SMALL)
-    {
-        forAll(weights, i)
-        {
-            weights[i] /= sumWeights;
-        }
-    }
-
-    // Interpolate normal vector using the weights
-    vector interpolatedNormal(0, 0, 0);
-    forAll(boundaryNormals, i)
-    {
-        interpolatedNormal += weights[i] * boundaryNormals[i];
-    }
-
-
-    return interpolatedNormal;
+    return result;
 }
+
+
+
+
 
 template<typename T>
 T clamp(const T& value, const T& low, const T& high)
@@ -316,85 +342,6 @@ T clamp(const T& value, const T& low, const T& high)
     return std::max(low, std::min(value, high));
 }
 
-
-
-// Correction for normal vectors based on boundary distance
-void applyNormalCorrection(const fvMesh& mesh, Field<vector>& pointNormals)
-{
-    scalar d1 = 0.5;
-    scalar d2 = 1.5;
-
-    // Access boundary points and normals
-    List<point> boundaryPoints;
-    List<vector> boundaryNormals;
-
-    // Extract boundary points and their normal vectors
-    forAll(mesh.boundaryMesh(), patchi)
-    {
-
-      const fvPatch& patch = mesh.boundary()[patchi];
-      //      const fvPatch& patch = mesh.boundaryMesh()[patchi];
-        forAll(patch, facei)
-        {
-
-          const face& f = mesh.faces()[patch.faceCells()[facei]];
-          //          const face& f = patch.face(facei);
-          //          const face& f = patch[facei];
-
-          vector normal = mesh.Sf()[patch.faceCells()[facei]] / mag(mesh.Sf()[patch.faceCells()[facei]]);
-          //          vector normal = f.area() / mag(f.area());
-            forAll(f, pointi)
-            {
-                boundaryPoints.append(mesh.points()[f[pointi]]);
-                boundaryNormals.append(normal);
-            }
-        }
-    }
-
-    // Loop through the internal points and apply normal correction
-    forAll(pointNormals, pointIndex)
-    {
-        const point& p = mesh.points()[pointIndex];
-        scalar dist_bdry = GREAT;  // Distance from boundary, update with actual distances
-
-        // Find the minimum distance to the boundary
-        forAll(boundaryPoints, bpi)
-        {
-            scalar dist = mag(p - boundaryPoints[bpi]);
-            dist_bdry = min(dist_bdry, dist);
-        }
-
-        // Apply buffer zone coefficient
-        scalar dist_coeff = clamp((dist_bdry - d1) / (d2 - d1), scalar(0.0), scalar(1.0));
-        //        scalar dist_coeff = clamp((dist_bdry - d1) / (d2 - d1), 0.0, 1.0);
-
-        // Adjust the normal based on the distance
-        vector interpNormal = inverseDistanceInterpolation(p, boundaryPoints, boundaryNormals);
-        pointNormals[pointIndex] = dist_coeff * pointNormals[pointIndex] + (1.0 - dist_coeff) * interpNormal;
-    }
-}
-
-
-// Function to apply vertical deformation that fades out near the top boundary
-//void applyVerticalDeformation(const Foam::fvMesh& mesh, const Foam::Field<Foam::Vector<double>>& pointDisplacement, scalar zmin, scalar zmax, scalar bottomDeformation);
-void applyVerticalDeformation(const fvMesh& mesh, Field<vector>& pointDisplacement, scalar zmin, scalar zmax, const scalar bottomDeformation){
-
-  // Loop through the internal points and apply vertical deformation
-    forAll(pointDisplacement, pointIndex)
-    {
-      const point& p = mesh.points()[pointIndex];
-      //  point& p = mesh.points()[pointIndex];
-
-        // Compute the relative height (Zrel) of the current point with respect to the top and bottom boundaries
-        scalar Zrel = (zmax - p.z()) / (zmax - zmin);
-
-        // Apply linear scaling to the deformation based on relative height (Zrel)
-        scalar vertDeform = bottomDeformation * Zrel;
-
-        // Modify the z-coordinate of the point, gradually reducing the deformation as it gets closer to the top boundary
-        pointDisplacement[pointIndex].z() += vertDeform;
-    }
-}
 
 //--------------------------------------------------------------
 
@@ -540,6 +487,24 @@ int main(int argc, char *argv[])
 
       Info<< "Time = " << runTime.userTimeName() << endl;
 
+      scalar xMin = min(mesh.Cf().component(0)).value();
+      scalar xMax = max(mesh.Cf().component(0)).value();
+
+      reduce(xMin, minOp<scalar>());
+      reduce(xMax, maxOp<scalar>());
+
+      Info << "xMin = " << xMin << endl;
+      Info << "xMax = " << xMax << endl;
+
+      scalar yMin = min(mesh.Cf().component(1)).value();
+      scalar yMax = max(mesh.Cf().component(1)).value();
+
+      reduce(yMin, minOp<scalar>());
+      reduce(yMax, maxOp<scalar>());
+
+      Info << "yMin = " << yMin << endl;
+      Info << "yMax = " << yMax << endl;
+
       scalar zMin = min(mesh.Cf().component(2)).value();
       scalar zMax = max(mesh.Cf().component(2)).value();
 
@@ -548,6 +513,11 @@ int main(int argc, char *argv[])
     
       Info << "zMin = " << zMin << endl;
       Info << "zMax = " << zMax << endl;
+ 
+      scalar Ldef(0.5*std::sqrt( sqr(xMax-xMin) + sqr(yMax-yMin) + sqr(zMax-zMin) ));
+
+      Info << "Ldef = " << Ldef << endl << endl;
+
     
       scalar z2Rel(0.0);
       scalar zNew(0.0);
@@ -559,38 +529,35 @@ int main(int argc, char *argv[])
     const vectorField& faceCentres = mesh.faceCentres();
     const scalarField magFaceAreas(mag(faceAreas));
     const vectorField faceNormals = mesh.faceAreas()/mag(faceAreas);
+    const faceList& faces = mesh.faces();
+    
+    // List of indexes of faces with z=0
+    labelList faceIndices;
 
-    word patchName = "bottom";  // Hardcode the patchName for boundary of interest
-
-    // Find the ID# associated with the patchName by iterating through boundaryMesh
-    label patchID = -1;
-    forAll(mesh.boundaryMesh(), patchi)
-      {
-        if (mesh.boundaryMesh()[patchi].name() == patchName)
-          {
-            patchID = patchi;
-            break;
-          }
-      }
-
-    if (patchID == -1)
-      {
-        FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
-      }
-
-
-    // Access the patch
-    const fvPatch& patchBottom = mesh.boundary()[patchID];
-
-    scalarField bottomCentresX(patchBottom.size());
-    scalarField bottomCentresY(patchBottom.size());
-    scalarField bottomCentresZ(patchBottom.size());
-    scalarField bottomAreas(patchBottom.size());
-    scalarField dzBottom(patchBottom.size());
-    // Loop through each face on the patch
-    forAll(patchBottom, facei)
+    // Pupolate list of faces at z=0, by iterating over all the mesh faces
+    forAll(faces, faceI)
     {
-        point pCentre = faceCentres[patchBottom.start() + facei];
+        // Check z of face
+        if (mag(faceCentres[faceI].z()) < SMALL) // Usa SMALL per tolleranza numerica
+        {
+            // Add the face index
+            faceIndices.append(faceI);
+        }
+    }
+
+    Sout << "Proc" << Pstream::myProcNo() << " z=0 faces " << faceIndices.size() << endl;
+
+    // Create fieds for face coords, areas and dz
+    scalarField bottomCentresX(faceIndices.size());
+    scalarField bottomCentresY(faceIndices.size());
+    scalarField bottomCentresZ(faceIndices.size());
+    scalarField bottomAreas(faceIndices.size());
+    scalarField dzBottom(faceIndices.size());
+
+    // Loop through each face in the list and compute dz with bilinear interpolation
+    forAll(faceIndices, facei)
+    {
+        point pCentre = faceCentres[faceIndices[facei]];
 
         // Get x, y coordinates of the pointi
         scalar x = pCentre.x(); 
@@ -618,11 +585,13 @@ int main(int argc, char *argv[])
                 v10 * (1 - xLerp) * yLerp +
                 v11 * xLerp * yLerp;
 
-            bottomCentresX[facei] = faceCentres[patchBottom.start() + facei].x();
-            bottomCentresY[facei] = faceCentres[patchBottom.start() + facei].y();
-            bottomCentresZ[facei] = faceCentres[patchBottom.start() + facei].z();
-            bottomAreas[facei] =  magFaceAreas[patchBottom.start() + facei];
-            dzBottom[facei] = zInterp;
+            bottomCentresX[facei] = faceCentres[faceIndices[facei]].x();
+            bottomCentresY[facei] = faceCentres[faceIndices[facei]].y();
+            bottomCentresZ[facei] = faceCentres[faceIndices[facei]].z();
+            bottomAreas[facei] =  magFaceAreas[faceIndices[facei]];
+            dzBottom[facei] = zInterp-faceCentres[faceIndices[facei]].z();
+            
+
         }
         else
         {
@@ -632,10 +601,128 @@ int main(int argc, char *argv[])
     }
 
 
-    patchName = "top";  // Hardcode the patchName for boundary of interest
+    // Create points from coords to save in an external file
+    pointField points(bottomCentresX.size());
+    forAll(points, i)
+    {
+        points[i] = vector(bottomCentresX[i], bottomCentresY[i], dzBottom[i]);
+    }
+
+    // Scrive i punti in un file di testo
+    OFstream outFile(runTime.path()/"centers.txt");
+    forAll(points, i)
+    {
+        outFile << points[i].x() << ", " << points[i].y() << ", " << points[i].z() << "\n";
+    }
+
+    Info << "Centers saved in file centers.txt" << endl;
+
+    // Start the merging of points from different processors
+    // We need to create global fields containing the points for the
+    // deformation of the z=0 faces only
+    
+    
+    // First of all create list with nproc fields
+    List<scalarField> CentresX(Pstream::nProcs());
+    CentresX[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+
+    List<scalarField> CentresY(Pstream::nProcs());
+    CentresY[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+
+    List<scalarField> Dz(Pstream::nProcs());
+    Dz[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+
+    List<scalarField> Areas(Pstream::nProcs());
+    Areas[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+
+    // Each processor populate its field in the list of fields
+    for (label i = 0; i < bottomCentresX.size(); ++i)
+    {
+        CentresX[Pstream::myProcNo()][i] = bottomCentresX[i];
+        CentresY[Pstream::myProcNo()][i] = bottomCentresY[i];
+        Areas[Pstream::myProcNo()][i] = bottomAreas[i];
+        Dz[Pstream::myProcNo()][i] = dzBottom[i];
+    }
+
+    // Use gather and scatter to have the full lists for all the processors
+    
+    Pstream::gatherList<scalarField>(CentresX);
+    Pstream::scatterList<scalarField>(CentresX);
+
+    Pstream::gatherList<scalarField>(CentresY);
+    Pstream::scatterList<scalarField>(CentresY);
+
+    Pstream::gatherList<scalarField>(Areas);
+    Pstream::scatterList<scalarField>(Areas);
+
+    Pstream::gatherList<scalarField>(Dz);
+    Pstream::scatterList<scalarField>(Dz);
+
+    // Create the global fields
+    scalarField globalPX;
+    scalarField globalPY;
+    scalarField globalPDz;
+    scalarField globalPAreas;
+    
+    for (label i = 0; i < Pstream::nProcs(); ++i)
+    {
+        globalPX.append(CentresX[i]);
+        globalPY.append(CentresY[i]);
+        globalPDz.append(Dz[i]);
+        globalPAreas.append(Areas[i]);
+    }
+
+    Info << "z=0 faces " << globalPAreas.size() << endl;
+
+    pointField zeroPoints(mesh.points());
+    pointField pDeform(0.0*zeroPoints);
+
+
+    // Scrive i punti in un file di testo
+    OFstream outFileNew(runTime.path()/"pointsNEW.txt");
+
+    // Lists for the face vertexes at z=0 and for the area and deformation at these points
+    scalarList pX;
+    scalarList pY;
+    scalarList pZ;
+    scalarList pArea;
+    scalarList pDz;
+
+    point pEval(zeroPoints[0]);
+    
+    // Loop over the points with z=0 to compute the deformation from the face centers
+    forAll(pDeform,pointi)
+    {
+
+        pEval = mesh.points()[pointi];
+
+        if ( pEval.z() < SMALL )
+        {    
+
+            Tuple2<scalar, scalar> result;
+
+            result = inverseDistanceInterpolationDzBottom(pEval, globalPX, globalPY, globalPAreas, globalPDz);
+
+            scalar interpDz = result.first();
+            scalar interpArea = result.second();   
+            
+            outFileNew << pEval.x() << ", " << pEval.y() << ", " << interpDz << "\n";
+
+            pX.append( pEval.x() );  // If outside the raster bounds, set to a default value (e.g., 0)
+            pY.append( pEval.y() );
+            pZ.append( 0.0 );
+            pArea.append( interpArea );
+            pDz.append( interpDz );
+        }
+
+    } 
+
+    Sout << "Proc" << Pstream::myProcNo() << " z=0 points " << pArea.size() << endl;
+      
+    word patchName = "top";  // Hardcode the patchName for boundary of interest
 
     // Find the ID# associated with the patchName by iterating through boundaryMesh
-    patchID = -1;
+    label patchID = -1;
     forAll(mesh.boundaryMesh(), patchi)
       {
         if (mesh.boundaryMesh()[patchi].name() == patchName)
@@ -653,10 +740,10 @@ int main(int argc, char *argv[])
 
     // Access the patch
     const fvPatch& patchTop = mesh.boundary()[patchID];
-    Info << "" << endl ;
-    Info << "patchName = " << patchName << endl ;
-    Info << "patchID = " << patchID << endl ;
-    Info << "" << endl ;
+    // Info << "" << endl ;
+    // Info << "patchName = " << patchName << endl ;
+    // Info << "patchID = " << patchID << endl ;
+    // Info << "" << endl ;
 
 
     scalarField topCentresX(patchTop.size());
@@ -667,89 +754,56 @@ int main(int argc, char *argv[])
 
     forAll(patchTop, facei)
     {
-        point pCentre = faceCentres[patchTop.start() + facei];
-
-        // Get x, y coordinates of the pointi
-        scalar x = pCentre.x(); 
-        scalar y = pCentre.y();
-        
-        
-        // Calculate row and column indices in the elevation matrix
-        int colIndex = (x - xllcorner) / cellsize;
-        int rowIndex = (y - yllcorner) / cellsize;
-
-        // Interpolate elevation value
-        if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
-        {
-            topCentresX[facei] = faceCentres[patchTop.start() + facei].x();
-            topCentresY[facei] = faceCentres[patchTop.start() + facei].y();
-            topCentresZ[facei] = faceCentres[patchTop.start() + facei].z();
-            topAreas[facei] =  magFaceAreas[patchTop.start() + facei];
-            dzTop[facei] = 0.0;
-        }
-
+        topCentresX[facei] = faceCentres[patchTop.start() + facei].x();
+        topCentresY[facei] = faceCentres[patchTop.start() + facei].y();
+        topCentresZ[facei] = faceCentres[patchTop.start() + facei].z();
+        topAreas[facei] =  magFaceAreas[patchTop.start() + facei];
+        dzTop[facei] = 0.0;        
     }
-    dzTop = 0.0;
 
+    List<scalarField> concatenatedPointsX(Pstream::nProcs());
+    concatenatedPointsX[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
 
-    List<scalarField> concatenatedCentresX(Pstream::nProcs());
-    concatenatedCentresX[Pstream::myProcNo()].setSize(dzBottom.size() + dzTop.size(), Pstream::myProcNo());
+    List<scalarField> concatenatedPointsY(Pstream::nProcs());
+    concatenatedPointsY[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
 
-    List<scalarField> concatenatedCentresY(Pstream::nProcs());
-    concatenatedCentresY[Pstream::myProcNo()].setSize(dzBottom.size() + dzTop.size(), Pstream::myProcNo());
-
-    List<scalarField> concatenatedCentresZ(Pstream::nProcs());
-    concatenatedCentresZ[Pstream::myProcNo()].setSize(dzBottom.size() + dzTop.size(), Pstream::myProcNo());
+    List<scalarField> concatenatedPointsZ(Pstream::nProcs());
+    concatenatedPointsZ[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
 
     List<scalarField> concatenatedDz(Pstream::nProcs());
-    concatenatedDz[Pstream::myProcNo()].setSize(dzBottom.size() + dzTop.size(), Pstream::myProcNo());
+    concatenatedDz[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
 
     List<scalarField> concatenatedAreas(Pstream::nProcs());
-    concatenatedAreas[Pstream::myProcNo()].setSize(dzBottom.size() + dzTop.size(), Pstream::myProcNo());
+    concatenatedAreas[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
 
-    List<scalarField> maskFieldAll(Pstream::nProcs());
-    maskFieldAll[Pstream::myProcNo()].setSize(dzBottom.size() + dzTop.size(), Pstream::myProcNo());
-
-    List<scalarField> maskFieldBottom(Pstream::nProcs());
-    maskFieldBottom[Pstream::myProcNo()].setSize(dzBottom.size() + dzTop.size(), Pstream::myProcNo());
-
-    List<scalarField> maskFieldTop(Pstream::nProcs());
-    maskFieldTop[Pstream::myProcNo()].setSize(dzBottom.size() + dzTop.size(), Pstream::myProcNo());
-
-    maskFieldAll[Pstream::myProcNo()] = 1.0;
-    
     // Copy the first field into the new field
-    for (label i = 0; i < bottomCentresX.size(); ++i)
+    for (label i = 0; i < pDz.size(); ++i)
     {
-        concatenatedCentresX[Pstream::myProcNo()][i] = bottomCentresX[i];
-        concatenatedCentresY[Pstream::myProcNo()][i] = bottomCentresY[i];
-        concatenatedCentresZ[Pstream::myProcNo()][i] = bottomCentresZ[i];
-        concatenatedAreas[Pstream::myProcNo()][i] = bottomAreas[i];
-        concatenatedDz[Pstream::myProcNo()][i] = dzBottom[i];
-        maskFieldBottom[Pstream::myProcNo()][i] = 1.0;
-        maskFieldTop[Pstream::myProcNo()][i] = 0.0;
+        concatenatedPointsX[Pstream::myProcNo()][i] = pX[i];
+        concatenatedPointsY[Pstream::myProcNo()][i] = pY[i];
+        concatenatedPointsZ[Pstream::myProcNo()][i] = pZ[i];
+        concatenatedAreas[Pstream::myProcNo()][i] = pArea[i];
+        concatenatedDz[Pstream::myProcNo()][i] = pDz[i];
     }
 
     // Copy the second field into the new field, starting after the end of the first
     for (label i = 0; i < topCentresX.size(); ++i)
     {
-        concatenatedCentresX[Pstream::myProcNo()][i + bottomCentresX.size()] = topCentresX[i];
-        concatenatedCentresY[Pstream::myProcNo()][i + bottomCentresY.size()] = topCentresY[i];
-        concatenatedCentresZ[Pstream::myProcNo()][i + bottomCentresZ.size()] = topCentresZ[i];
-        concatenatedAreas[Pstream::myProcNo()][i + bottomAreas.size()] = topAreas[i];
-        concatenatedDz[Pstream::myProcNo()][i + dzBottom.size()] = dzTop[i];
-        maskFieldBottom[Pstream::myProcNo()][i + bottomCentresX.size()] = 0.0;
-        maskFieldTop[Pstream::myProcNo()][i + bottomCentresX.size()] = 1.0;
+        concatenatedPointsX[Pstream::myProcNo()][i + pX.size()] = topCentresX[i];
+        concatenatedPointsY[Pstream::myProcNo()][i + pY.size()] = topCentresY[i];
+        concatenatedPointsZ[Pstream::myProcNo()][i + pZ.size()] = topCentresZ[i];
+        concatenatedAreas[Pstream::myProcNo()][i + pArea.size()] = topAreas[i];
+        concatenatedDz[Pstream::myProcNo()][i + pDz.size()] = dzTop[i];
     }
 
-    Pstream::gatherList<scalarField>(concatenatedCentresX);
-    Pstream::scatterList<scalarField>(concatenatedCentresX);
+    Pstream::gatherList<scalarField>(concatenatedPointsX);
+    Pstream::scatterList<scalarField>(concatenatedPointsX);
 
-    Pstream::gatherList<scalarField>(concatenatedCentresY);
-    Pstream::scatterList<scalarField>(concatenatedCentresY);
+    Pstream::gatherList<scalarField>(concatenatedPointsY);
+    Pstream::scatterList<scalarField>(concatenatedPointsY);
 
-    Pstream::gatherList<scalarField>(concatenatedCentresZ);
-    Pstream::scatterList<scalarField>(concatenatedCentresZ);
+    Pstream::gatherList<scalarField>(concatenatedPointsZ);
+    Pstream::scatterList<scalarField>(concatenatedPointsZ);
 
     Pstream::gatherList<scalarField>(concatenatedAreas);
     Pstream::scatterList<scalarField>(concatenatedAreas);
@@ -757,213 +811,302 @@ int main(int argc, char *argv[])
     Pstream::gatherList<scalarField>(concatenatedDz);
     Pstream::scatterList<scalarField>(concatenatedDz);
 
-    Pstream::gatherList<scalarField>(maskFieldAll);
-    Pstream::scatterList<scalarField>(maskFieldAll);
-
-    Pstream::gatherList<scalarField>(maskFieldTop);
-    Pstream::scatterList<scalarField>(maskFieldTop);
-
-    Pstream::gatherList<scalarField>(maskFieldBottom);
-    Pstream::scatterList<scalarField>(maskFieldBottom);
-
-    scalarField globalCentresX;
-    scalarField globalCentresY;
-    scalarField globalCentresZ;
+    scalarField globalPointsX;
+    scalarField globalPointsY;
+    scalarField globalPointsZ;
     scalarField globalDz;
     scalarField globalAreas;
-    scalarField globalMaskAll;
-    scalarField globalMaskTop;
-    scalarField globalMaskBottom;
     
+    /*
     for (label i = 0; i < Pstream::nProcs(); ++i)
     {
-        globalCentresX.append(concatenatedCentresX[i]);
-        globalCentresY.append(concatenatedCentresY[i]);
-        globalCentresZ.append(concatenatedCentresZ[i]);
+        globalPointsX.append(concatenatedPointsX[i]);
+        globalPointsY.append(concatenatedPointsY[i]);
+        globalPointsZ.append(concatenatedPointsZ[i]);
         globalDz.append(concatenatedDz[i]);
         globalAreas.append(concatenatedAreas[i]);
-        globalMaskAll.append(maskFieldAll[i]);
-        globalMaskTop.append(maskFieldTop[i]);
-        globalMaskBottom.append(maskFieldBottom[i]);
+    }
+    */
+
+    for (label i = 0; i < Pstream::nProcs(); ++i)
+    {
+        forAll(concatenatedDz[i],pi)
+        {
+            // The points belonging to more than one processor
+            // should not be added twice
+            // "accept" becomes false when the point already exists
+            bool accept(true);
+            forAll(globalPointsX,addedPi)
+            {
+                if ( (mag(globalPointsX[addedPi]-concatenatedPointsX[i][pi])< SMALL) &&
+                     (mag(globalPointsY[addedPi]-concatenatedPointsY[i][pi])< SMALL) &&
+                     (mag(globalPointsZ[addedPi]-concatenatedPointsZ[i][pi])< SMALL) )
+                {
+                    accept = false;
+                    break;
+                }
+            }
+            if (accept)
+            {
+                globalPointsX.append(concatenatedPointsX[i][pi]);
+                globalPointsY.append(concatenatedPointsY[i][pi]);
+                globalPointsZ.append(concatenatedPointsZ[i][pi]);
+                globalDz.append(concatenatedDz[i][pi]);
+                globalAreas.append(concatenatedAreas[i][pi]);
+            }            
+        }
     }
 
-    Info << "SIZE " << globalMaskAll.size() << endl;
+    Info << "Global points for deformation " << globalDz.size() << endl;
 
-    // std::cout << "Press Enter to continue..." << std::endl;
-    // std::cin.get();
+    scalar gamma = 5.0;
+    scalarField a_n(globalAreas / sum(globalAreas));
+    scalar dzMean(sum(a_n*globalDz));
+    scalar alphaAll = gamma / Ldef * max( mag( globalDz - dzMean ) );
 
-
-    pointField zeroPoints(mesh.points());
-
-    pointField pDeform(0.0*zeroPoints);
-    point pEval(zeroPoints[0]);
+    Info << "alpha " << alphaAll << endl;
 
     scalar interpDz(0.0);
+    scalar interpDz0(0.0);
+    scalar interpDz1(0.0);
 
-    // Loop over all cells in the mesh to interpolate elevation values
+    alphaAll = 10.0;
+
+    scalar zExp = 5.0;
+
+    // Loop over all points in the mesh to interpolate vertical deformation
     forAll(pDeform,pointi)
     {
 
         pEval = mesh.points()[pointi];
 
-        if ( Pstream::myProcNo() == 2)
+        scalar zRel = max(0.0,min(1.0, (zMax-pEval.z())/(zMax-0.0)));
+               
+        if ( pEval.z() > SMALL )
         {
-            Sout << "Proc" << Pstream::myProcNo() << " " << pDeform.size()-pointi << " " << pointi << endl;         
-        }
-        
-        
-        if ( pEval.z() > 0.0 )
-        {
-            if ( mag(pEval.z()-zMax) < 1.e-4 )
+            if ( mag(pEval.z()-zMax) < SMALL )
             {
                 interpDz = 0.0;  
             } 
             else
             {
-                interpDz = inverseDistanceInterpolationDz(pEval, globalCentresX, globalCentresY, globalCentresZ, globalDz, globalAreas, globalMaskAll);        
+                Info << "Proc" << Pstream::myProcNo() << " " << pDeform.size()-pointi 
+                     << " " << pointi << endl;
+
+                // interpolation based on full 3D weighted inverse distance 
+                interpDz0 = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, globalPointsX, 
+                                    globalPointsY, globalPointsZ, globalDz, globalAreas);        
+
+                // interpolation based on (x,y) coordinates and with linear dependence on zRel
+                Tuple2<scalar, scalar> result;
+
+                result = inverseDistanceInterpolationDzBottom(pEval, globalPX, globalPY, 
+                                    globalPAreas, globalPDz);
+                 
+                interpDz1 = zRel * result.first();
+
+                // mixed interpolation
+                interpDz = std::pow(zRel,zExp)*interpDz1 + (1.0-std::pow(zRel,zExp))*interpDz0;
             }
-            
+ 
+            zNew = pEval.z() + zRel * interpDz;
+                
+            if (dzVert > 0)
+            {
+                // enlarge from a fixed height above the maximum
+                // topography and the top, thus from an horizontal
+                // plane to the top
+                z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+            }
+            else
+            {
+                // enlarge from the topography to the top
+                z2Rel = (zNew - interpDz) / (zMax - interpDz);
+            }
+            z2Rel = std::pow(z2Rel,exp_shape);
+                
+            pDeform[pointi].x() = z2Rel*(expFactor-1.0)*pEval.x();
+            pDeform[pointi].y() = z2Rel*(expFactor-1.0)*pEval.y();
+             
         }
         else
         {    
-            interpDz = inverseDistanceInterpolationDz(pEval, globalCentresX, globalCentresY, globalCentresZ, globalDz, globalAreas, globalMaskBottom);
+
+            Info << "Proc" << Pstream::myProcNo() << " " << pDeform.size()-pointi 
+                 << " " << pointi << endl;
+
+            interpDz = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, 
+                                   globalPointsX, globalPointsY, globalPointsZ, globalDz, 
+                                   globalAreas);
+
+            pDeform[pointi].x() = 0.0;
+            pDeform[pointi].y() = 0.0;
+
         }
 
-        pDeform[pointi].x() = 0.0;  // If outside the raster bounds, set to a default value (e.g., 0)
-        pDeform[pointi].y() = 0.0;
         pDeform[pointi].z() = interpDz;
     } // closes pDeform Loop
       
     Sout << "End loop" << endl; 
+
+
     pointField newPoints(zeroPoints + pDeform);
 
     mesh.setPoints(newPoints);
 
-    /*
-    const vectorField newFaceNormals = mesh.faceAreas()/mag(faceAreas);
-    forAll(patchBottom, facei)
+    const faceList& pFaces = mesh.faces();
+    const pointField& pPts = mesh.points();
+
+    forAll(faceIndices, facei)
     {
-        vector normVect = newFaceNormals[patchBottom.start() + facei];
-        Info << "normVect " << normVect << endl;
+
+        face f = pFaces[faceIndices[facei]];
+
+        // Compute an estimate of the centre as the average of the points
+        point pAvg = Zero;
+
+        forAll(f, fp)
+        {
+            pAvg += pPts[f[fp]];
+        }
+        pAvg /= f.size();
+
+        // Compute the face area normal and unit normal by summing up the
+        // normals of the triangles formed by connecting each edge to the
+        // point average.
+        vector sumA = Zero;
+
+        forAll(f, fp)
+        {
+            const point& p = pPts[f[fp]];
+            const point& pNext = pPts[f.nextLabel(fp)];
+
+            const vector a = (pNext - p)^(pAvg - p);
+
+            sumA += a;
+        }
+        const vector sumAHat = normalised(sumA);
+
+        // Compute the area-weighted sum of the triangle centres. Note use
+        // the triangle area projected in the direction of the face normal
+        // as the weight, *not* the triangle area magnitude. Only the
+        // former makes the calculation independent of the initial estimate.
+        scalar sumAn = 0;
+        vector sumAnc = Zero;
+        forAll(f, fp)
+        {
+            const point& p = pPts[f[fp]];
+            const point& pNext = pPts[f.nextLabel(fp)];
+
+            const vector a = (pNext - p)^(pAvg - p);
+            const vector c = p + pNext + pAvg;
+
+            const scalar an = a & sumAHat;
+
+            sumAn += an;
+            sumAnc += an*c;
+        }
+
+        point fc = (1.0/3.0)*sumAnc/sumAn;
+
+        // Calculate the sum of magnitude of areas and compare to magnitude
+        // of sum of areas.
+
+        scalar summA = 0.0;
+        vector sumN(0.0,0.0,0.0);
+
+        forAll(f, fp)
+        {
+            const point& thisPoint = pPts[f[fp]];
+            const point& nextPoint = pPts[f.nextLabel(fp)];
+
+            // Triangle around fc.
+            const vector n = 0.5*((nextPoint - thisPoint)^(fc - thisPoint));
+            
+            summA += mag(n);
+            sumN += n;
+        }
+
+        scalar magArea = mag(sumN);
+        scalar faceFlatness = magArea/(summA);  
+        if ( faceFlatness < 0.98 )
+        {   
+            Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " centre " << fc << " flatness " << faceFlatness << endl; 
+        }               
+    }
+
+    /*
+
+    const vectorField& fCtrs = mesh.faceCentres();
+    const vectorField& pC = mesh.cellCentres();
+    const labelList& pOwner = mesh.faceOwner();
+    const vectorField& fAreas = mesh.faceAreas();
+
+    scalar minQ(1.0);
+    // Loop through each midified reference face 
+    forAll(faceIndices, facei)
+    {
+
+        face f = pFaces[faceIndices[facei]];
+
+        label oCI = pOwner[faceIndices[facei]];
+
+        point oCc = pC[oCI];
+
+        minQ = 1.0;
+
+        forAll(f, faceBasePtI)
+        {
+            minQ = minQuality(mesh, oCc, faceIndices[facei], true, faceBasePtI);
+        }
+        
+        if (minQ < 1e-15)
+        {
+            Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " minQ " << minQ << endl; 
+            forAll(f,ip)
+            {
+                Sout << ip << " coord " << pPts[f[ip]] << endl;
+            }
+            Sout << " oCc " << oCc << endl;
+        }
+
+        const point& fc = fCtrs[faceIndices[facei]];
+
+        // Calculate the sum of magnitude of areas and compare to magnitude
+        // of sum of areas.
+
+        scalar sumA = 0.0;
+        vector sumN(0.0,0.0,0.0);
+
+        forAll(f, fp)
+        {
+            const point& thisPoint = pPts[f[fp]];
+            const point& nextPoint = pPts[f.nextLabel(fp)];
+
+            // Triangle around fc.
+            const vector n = 0.5*((nextPoint - thisPoint)^(fc - thisPoint));
+            
+            sumA += mag(n);
+            sumN += n;
+        }
+
+        scalar magArea = mag(sumN);
+        scalar faceFlatness = magArea/(sumA + rootVSmall);  
+        if ( faceFlatness < 0.98 )
+        {     
+            Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " flatness " << faceFlatness << endl; 
+        }               
     }
     */
+    
 
 
     mesh.write();
 
 
-    /*
 
-    vector avgNormal(0, 0, 0); // To store the average normal vector
-    Info << "Initial avgNormal = ("  << avgNormal.x() << ", " << avgNormal.y() << ", " << avgNormal.z() << ")" << endl;
-    Info << "" << endl ;
-    
-    // Initialize an array to store normals for each point
-    Field<vector> pointNormals(mesh.nPoints(), vector::zero);
-
-    // Initialize an array to count the number of faces contributing to each point's normal
-    Field<label> pointFaceCount(mesh.nPoints(), 0);
-
-    // Loop through each face on the patch
-    forAll(patch, facei)
-      {
-        Info << "" << endl;
-        Info << "--------------------------------" << endl; 
-        Info << "Processing face: " << facei << endl;
-
-            
-        const face& f = mesh.faces()[patch.start() + facei];  // Access the face directly from the patch
-        const labelList& facePointsIndices = f;  // Get the point indices for the current face
-
-        // Ensure the face has exactly 4 points (for quad faces)
-        if (facePointsIndices.size() != 4)
-          {
-            FatalErrorInFunction << "Expected a face with 4 points, but got " << facePointsIndices.size() << exit(FatalError);
-          }
-
-        // Loop through the 4 points of the face to calculate the normal
-        for (int pointi = 0; pointi < facePointsIndices.size(); ++pointi)
-          {
-            label pointIndex = facePointsIndices[pointi];  // Get the index of the point
-            point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
-
-            // Find two other points on the face connected to point P (adjacent points on the face)
-            label p1 = facePointsIndices[(pointi + 1) % 4];  // Next point
-            label p2 = facePointsIndices[(pointi + 3) % 4];  // Previous point
-
-            point point1 = mesh.points()[p1];
-            point point2 = mesh.points()[p2];
-
-            // Compute vectors connecting point P with point1 and point2
-            vector v1 = point1 - pointP;
-            vector v2 = point2 - pointP;
-
-            // Compute the cross product of v1 and v2 to get the normal
-            vector normal = v1 ^ v2;
-
-            // Accumulate the normal for this point
-            pointNormals[pointIndex] += normal;
-            pointFaceCount[pointIndex]++;  // Increase the face count for averaging
-
-            Info << "Point " << pointIndex << ": accumulated normal = " << pointNormals[pointIndex]
-                 << ", face count = " << pointFaceCount[pointIndex] << endl;
-          }
-      }
-
-    Info << "" << endl; 
-    
-    // After the loop, compute the average normal for each point by dividing by the face count
-    forAll(patch.faceCells(), pointIndex) //pointNormals
-      {
-        if (pointFaceCount[pointIndex] > 0)
-          {
-            pointNormals[pointIndex] /= pointFaceCount[pointIndex];  // Compute the average normal
-
-                // Normalize the vector
-            // eg., avgNormal /= mag(avgNormal);
-            pointNormals[pointIndex] /= mag(pointNormals[pointIndex]);
-
-          }
-        Info << "Final average normal for point " << pointIndex << " = " << pointNormals[pointIndex] << endl;
-      }
-
-
-    
-
-
- 
-//-------------------------------------------------------------------------------------------------------------------
-    
-      //    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-      //        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-      //        << nl << endl;
-      //    Info<< "End\n" << endl;
-      //    Info << "Completed normal vector calculation for patch: " << patchName << endl;
-
-    */
-        
     } // closes skip constant time
 
-  // Field to store the point normals and displacements
-    Field<vector> pointNormals(mesh.points().size());
-    Field<vector> pointDisplacement(mesh.points().size());
-
-    // Boundary deformation parameters
-    //    scalar zmin = 0.0;   // Minimum z (bottom boundary)
-    //    scalar zmax = 10.0;  // Maximum z (top boundary)
-    //    scalar bottomDeformation = 1.0;  // Deformation applied to the bottom boundary
-
-    // Apply normal correction
-    //    applyNormalCorrection(mesh, pointNormals);
-
-    // Apply vertical deformation based on relative height
-    //  applyVerticalDeformation(mesh, pointDisplacement, zmin, zmax, bottomDeformation);
-
-    // Write the mesh with deformations
-    //    mesh.write();
-
-
-  
     return 0;
 } // closes int main()
 
