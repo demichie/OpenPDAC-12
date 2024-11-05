@@ -25,14 +25,15 @@ Class
     Foam::heatTransferModels::CoeffModel
 
 Description
-    CoeffModel (1978) correlation for fixed and fluidised beds with Re < 10^5
+    Zhu et al. (2019) correlation for fixed and fluidised beds with Re < 10^5
     and continuous phase fraction between 0.35 and 1.
 
     Reference:
     \verbatim
-        CoeffModel, D. J. (1978).
-        Transfer of heat or mass to particles in fixed and fluidised beds.
-        International Journal of Heat and Mass Transfer, 21(4), 467-476.
+        Zhu, Li-Tao, Yuan-Xing Liu, and Zheng-Hong Luo. 
+        "An enhanced correlation for gas-particle heat and mass transfer in 
+         packed and fluidized bed reactors." 
+         Chemical Engineering Journal 374 (2019): 531-544.
     \endverbatim
 
 SourceFiles
