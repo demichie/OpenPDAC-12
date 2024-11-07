@@ -121,6 +121,27 @@ void Foam::solvers::OpenPDAC::thermophysicalPredictor()
     {
         for (int Ecorr=0; Ecorr<nEnergyCorrectors; Ecorr++)
         {
+
+            const word&continuousPhaseName_ = fluid.continuousPhaseName();
+            const phaseModel& continuousPhase = fluid.phases()[continuousPhaseName_];
+
+            forAll(fluid.anisothermalPhases(), anisothermalPhasei)
+            {
+                const phaseModel& phase =
+                    fluid.anisothermalPhases()[anisothermalPhasei];
+
+                if (&phase != &continuousPhase)
+                {
+                    volScalarField he1 = phase.thermo().he(p_,phase.thermo().T());
+                    volScalarField he2 = phase.thermo().he(p_,continuousPhase.thermo().T());
+                    volScalarField heNew = phase.thermo().he();
+                    heNew = pos0(phase-phase.residualAlpha())*he1 
+                            + neg(phase-phase.residualAlpha())*he2;
+                }
+            }
+
+
+
             fluid_.predictThermophysicalTransport();
             compositionPredictor();
             energyPredictor();

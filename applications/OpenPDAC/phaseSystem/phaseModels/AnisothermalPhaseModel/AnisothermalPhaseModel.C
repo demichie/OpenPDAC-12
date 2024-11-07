@@ -202,7 +202,15 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
     }
     else if (this->thermo_->dpdt())
     {
-        tEEqn.ref() -= filterPressureWork(alpha*this->fluid().dpdt());
+
+        const word continuousPhaseName = this->fluid().continuousPhaseName();
+        const word phaseName = this->name();
+
+        if (phaseName == continuousPhaseName)
+        {
+            tEEqn.ref() -= filterPressureWork(alpha*this->fluid().dpdt());
+        }
+
     }
 
     return tEEqn;

@@ -95,11 +95,19 @@ heatTransfer() const
             const volScalarField& he = phase.thermo().he();
             const volScalarField Cpv(phase.thermo().Cpv());
 
+            const word continuousPhaseName = phase.fluid().continuousPhaseName();
+            const word phaseName = phase.name();
+
+            // Info << "phase " << phase.name() << " otherPhase " << otherPhase.name() << endl;
+
             const volScalarField phaseK
-            (
-               //  iter.otherPhase()
+            (            
+               phaseName == continuousPhaseName
+               ? otherPhase/max(otherPhase, otherPhase.residualAlpha())*K
+               : phase/max(phase, phase.residualAlpha())*K
+               // iter.otherPhase()
                // /max(iter.otherPhase(), iter.otherPhase().residualAlpha())*
-               K
+               // K
             );
 
             *eqns[phase.name()] +=
