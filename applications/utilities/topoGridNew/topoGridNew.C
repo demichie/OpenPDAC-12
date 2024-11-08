@@ -270,7 +270,7 @@ scalar inverseDistanceInterpolationDz(const scalar& Ldef, const scalar& alpha, c
     scalarField distances(boundaryDz.size());
     scalarField weights(boundaryDz.size());
 
-    if ( internalPoint.z() > SMALL )
+    if ( internalPoint.z() > 1.e-3 )
     {
         distances = sqrt( sqr(internalPoint.x()-boundaryPointsX) + sqr(internalPoint.y()-boundaryPointsY)  + sqr(internalPoint.z()-boundaryPointsZ));
     }
@@ -281,7 +281,7 @@ scalar inverseDistanceInterpolationDz(const scalar& Ldef, const scalar& alpha, c
 
     scalar minValue = min(distances);
 
-    if ( minValue < SMALL ) 
+    if ( minValue < 1.e-5 ) 
     {
         label minIndex = findIndex(distances, minValue);   
         interpolatedDz = boundaryDz[minIndex];    
@@ -312,7 +312,7 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(const point& interna
 
     scalar minValue = min(distances);
 
-    if ( minValue < SMALL ) 
+    if ( minValue < 1.e-5 ) 
     {
         label minIndex = findIndex(distances, minValue);   
         interpolatedDz = boundaryDz[minIndex];    
@@ -538,7 +538,7 @@ int main(int argc, char *argv[])
     forAll(faces, faceI)
     {
         // Check z of face
-        if (mag(faceCentres[faceI].z()) < SMALL) // Usa SMALL per tolleranza numerica
+        if (mag(faceCentres[faceI].z()) < 1.e-3) // Usa SMALL per tolleranza numerica
         {
             // Add the face index
             faceIndices.append(faceI);
@@ -609,6 +609,7 @@ int main(int argc, char *argv[])
     }
 
     // Scrive i punti in un file di testo
+    /*
     OFstream outFile(runTime.path()/"centers.txt");
     forAll(points, i)
     {
@@ -616,7 +617,7 @@ int main(int argc, char *argv[])
     }
 
     Info << "Centers saved in file centers.txt" << endl;
-
+    */ 
     // Start the merging of points from different processors
     // We need to create global fields containing the points for the
     // deformation of the z=0 faces only
@@ -679,7 +680,7 @@ int main(int argc, char *argv[])
 
 
     // Scrive i punti in un file di testo
-    OFstream outFileNew(runTime.path()/"pointsNEW.txt");
+    // OFstream outFileNew(runTime.path()/"pointsNEW.txt");
 
     // Lists for the face vertexes at z=0 and for the area and deformation at these points
     scalarList pX;
@@ -696,7 +697,7 @@ int main(int argc, char *argv[])
 
         pEval = mesh.points()[pointi];
 
-        if ( pEval.z() < SMALL )
+        if ( pEval.z() < 1e-3 )
         {    
 
             Tuple2<scalar, scalar> result;
@@ -706,7 +707,7 @@ int main(int argc, char *argv[])
             scalar interpDz = result.first();
             scalar interpArea = result.second();   
             
-            outFileNew << pEval.x() << ", " << pEval.y() << ", " << interpDz << "\n";
+            // outFileNew << pEval.x() << ", " << pEval.y() << ", " << interpDz << "\n";
 
             pX.append( pEval.x() );  // If outside the raster bounds, set to a default value (e.g., 0)
             pY.append( pEval.y() );
@@ -838,9 +839,9 @@ int main(int argc, char *argv[])
             bool accept(true);
             forAll(globalPointsX,addedPi)
             {
-                if ( (mag(globalPointsX[addedPi]-concatenatedPointsX[i][pi])< SMALL) &&
-                     (mag(globalPointsY[addedPi]-concatenatedPointsY[i][pi])< SMALL) &&
-                     (mag(globalPointsZ[addedPi]-concatenatedPointsZ[i][pi])< SMALL) )
+                if ( (mag(globalPointsX[addedPi]-concatenatedPointsX[i][pi])< 1.e-3) &&
+                     (mag(globalPointsY[addedPi]-concatenatedPointsY[i][pi])< 1.e-3) &&
+                     (mag(globalPointsZ[addedPi]-concatenatedPointsZ[i][pi])< 1.e-3) )
                 {
                     accept = false;
                     break;
@@ -882,9 +883,9 @@ int main(int argc, char *argv[])
 
         scalar zRel = max(0.0,min(1.0, (zMax-pEval.z())/(zMax-0.0)));
                
-        if ( pEval.z() > SMALL )
+        if ( pEval.z() > 1.e-3 )
         {
-            if ( mag(pEval.z()-zMax) < SMALL )
+            if ( mag(pEval.z()-zMax) < 1.e-3 )
             {
                 interpDz = 0.0;  
             } 
