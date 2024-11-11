@@ -117,13 +117,14 @@ void Foam::solvers::OpenPDAC::energyPredictor()
 
 void Foam::solvers::OpenPDAC::thermophysicalPredictor()
 {
-    if (pimple.thermophysics() && !(pimple.firstIter()) )
+    if (pimple.thermophysics())
     {
         for (int Ecorr=0; Ecorr<nEnergyCorrectors; Ecorr++)
         {
 
             const word&continuousPhaseName_ = fluid.continuousPhaseName();
             const phaseModel& continuousPhase = fluid.phases()[continuousPhaseName_];
+
 
             forAll(fluid.anisothermalPhases(), anisothermalPhasei)
             {
@@ -134,17 +135,28 @@ void Foam::solvers::OpenPDAC::thermophysicalPredictor()
                 {
                     volScalarField he1 = phase.thermo().he(p_,phase.thermo().T());
                     volScalarField he2 = phase.thermo().he(p_,continuousPhase.thermo().T());
-                    volScalarField heNew = phase.thermo().he();
+                    volScalarField& heNew = const_cast<volScalarField&>(phase.thermo().he());
+                    
+                    heNew = phase/max(phase, phase.residualAlpha()) * he1 
+                            + ( 1.0 - phase/max(phase, phase.residualAlpha()) ) * he2;
+                                       
                     heNew = pos0(phase-phase.residualAlpha())*he1 
                             + neg(phase-phase.residualAlpha())*he2;
+
+                    heNew.correctBoundaryConditions();
+
+                    fluid_.correctThermo();
                 }
             }
 
+            fluid_.correctThermo();
 
 
             fluid_.predictThermophysicalTransport();
             compositionPredictor();
             energyPredictor();
+
+
 
             forAll(fluid.anisothermalPhases(), anisothermalPhasei)
             {
@@ -157,6 +169,8 @@ void Foam::solvers::OpenPDAC::thermophysicalPredictor()
                     << max(phase.thermo().T()).value()
                     << endl;
             }
+
+
             
             bool checkResidual(true);
             bool doCheck(false);
