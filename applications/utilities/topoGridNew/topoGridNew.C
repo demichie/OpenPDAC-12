@@ -296,7 +296,7 @@ scalar inverseDistanceInterpolationDz(const scalar& Ldef, const scalar& alpha, c
 }
 
 
-Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(const point& internalPoint, const scalarField& boundaryPointsX, const scalarField& boundaryPointsY, const scalarField& boundaryArea, const scalarField& boundaryDz)
+Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(const point& internalPoint, const scalarField& boundaryPointsX, const scalarField& boundaryPointsY, const scalarField& boundaryArea, const scalarField& boundaryDz, const scalar& interpRelRadius)
 {
 
     scalar interpolatedDz(0.0);
@@ -321,7 +321,7 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(const point& interna
     else
     {
         weights = pow((1.0 / distances), a);  
-        weights *= neg( distances - 4.0*minValue);
+        weights *= neg( distances - interpRelRadius*minValue);
         interpolatedDz = sum(weights*boundaryDz)/sum(weights);   
         interpolatedArea = sum(weights*boundaryArea)/sum(weights);   
     }
@@ -344,13 +344,6 @@ T clamp(const T& value, const T& low, const T& high)
 
 
 //--------------------------------------------------------------
-
-//void applyVerticalDeformation(const Foam::fvMesh& mesh, const Foam::Field<Foam::Vector<double>>& pointDisplacement, scalar zmin, scalar zmax, const Foam::List<scalar>& bottomDeformation);
-
-// Function prototype
-
-
-
 
 int main(int argc, char *argv[])
 {
@@ -379,6 +372,7 @@ int main(int argc, char *argv[])
   const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
   const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
   const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
+  const scalar interpRelRadius = topoDict.lookupOrDefault<scalar>("interpRelRadius",4.0);
   const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
   const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
   const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
@@ -679,8 +673,6 @@ int main(int argc, char *argv[])
     pointField pDeform(0.0*zeroPoints);
 
 
-    // Scrive i punti in un file di testo
-    // OFstream outFileNew(runTime.path()/"pointsNEW.txt");
 
     // Lists for the face vertexes at z=0 and for the area and deformation at these points
     scalarList pX;
@@ -702,13 +694,12 @@ int main(int argc, char *argv[])
 
             Tuple2<scalar, scalar> result;
 
-            result = inverseDistanceInterpolationDzBottom(pEval, globalPX, globalPY, globalPAreas, globalPDz);
+            result = inverseDistanceInterpolationDzBottom(pEval, globalPX, 
+                                               globalPY, globalPAreas, globalPDz, interpRelRadius);
 
             scalar interpDz = result.first();
             scalar interpArea = result.second();   
             
-            // outFileNew << pEval.x() << ", " << pEval.y() << ", " << interpDz << "\n";
-
             pX.append( pEval.x() );  // If outside the raster bounds, set to a default value (e.g., 0)
             pY.append( pEval.y() );
             pZ.append( 0.0 );
@@ -759,7 +750,7 @@ int main(int argc, char *argv[])
         topCentresY[facei] = faceCentres[patchTop.start() + facei].y();
         topCentresZ[facei] = faceCentres[patchTop.start() + facei].z();
         topAreas[facei] =  magFaceAreas[patchTop.start() + facei];
-        dzTop[facei] = 0.0;        
+        dzTop[facei] = maxTopo;        
     }
 
     List<scalarField> concatenatedPointsX(Pstream::nProcs());
@@ -860,6 +851,24 @@ int main(int argc, char *argv[])
 
     Info << "Global points for deformation " << globalDz.size() << endl;
 
+    /*
+    if ( Pstream::myProcNo() == 0 )
+    {
+
+        // Scrive i punti in un file di testo
+        OFstream outFileNew(runTime.path()/"pointsNEW.txt");
+
+        forAll(globalPointsX,pi)
+        {
+            if ( mag(globalPointsZ[pi]-zMax) > 1.e-3 )
+            {
+                outFileNew << globalPointsX[pi] << ", " << globalPointsY[pi] << ", " << globalDz[pi] << "\n";        
+            }
+        }    
+    }
+    */
+    
+ 
     scalar gamma = 5.0;
     scalarField a_n(globalAreas / sum(globalAreas));
     scalar dzMean(sum(a_n*globalDz));
@@ -887,7 +896,7 @@ int main(int argc, char *argv[])
         {
             if ( mag(pEval.z()-zMax) < 1.e-3 )
             {
-                interpDz = 0.0;  
+                interpDz = maxTopo;  
             } 
             else
             {
@@ -902,9 +911,9 @@ int main(int argc, char *argv[])
                 Tuple2<scalar, scalar> result;
 
                 result = inverseDistanceInterpolationDzBottom(pEval, globalPX, globalPY, 
-                                    globalPAreas, globalPDz);
+                                    globalPAreas, globalPDz, interpRelRadius);
                  
-                interpDz1 = zRel * result.first();
+                interpDz1 = zRel * result.first() + ( 1.0-zRel ) * maxTopo;
 
                 // mixed interpolation
                 interpDz = std::pow(zRel,zExp)*interpDz1 + (1.0-std::pow(zRel,zExp))*interpDz0;
@@ -1032,7 +1041,8 @@ int main(int argc, char *argv[])
         scalar faceFlatness = magArea/(summA);  
         if ( faceFlatness < 0.98 )
         {   
-            Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " centre " << fc << " flatness " << faceFlatness << endl; 
+            Sout << "Proc" << Pstream::myProcNo() << " face " << facei 
+                 << " centre " << fc << " flatness " << faceFlatness << endl; 
         }               
     }
 
