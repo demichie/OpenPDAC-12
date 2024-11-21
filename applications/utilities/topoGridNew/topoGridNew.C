@@ -502,7 +502,7 @@ int main(int argc, char *argv[])
     {
     
       // Subsample the matrix with a factor of 4
-      label factor = 4;
+      label factor = 2;
       RectangularMatrix<double> elevationSubsampled = subsampleMatrix(elevation, ncols, nrows, factor);
 
       scalar xllSubsampled(xllcorner+(0.5*factor)*cellsize);
@@ -1016,12 +1016,12 @@ int main(int argc, char *argv[])
                 // enlarge from a fixed height above the maximum
                 // topography and the top, thus from an horizontal
                 // plane to the top
-                z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+                z2Rel = max(0, (zNew - zVert) / (zMax + maxTopo - zVert));
             }
             else
             {
                 // enlarge from the topography to the top
-                z2Rel = (zNew - interpDz) / (zMax - interpDz);
+                z2Rel = (zNew - interpDz) / (zMax + maxTopo - interpDz);
             }
             z2Rel = std::pow(z2Rel,exp_shape);
                 
