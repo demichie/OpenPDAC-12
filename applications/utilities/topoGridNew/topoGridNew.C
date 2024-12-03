@@ -433,6 +433,7 @@ int main(int argc, char *argv[])
   const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
   const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
   const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
+  const Switch checkMeshFlag = topoDict.lookupOrDefault<Switch>("checkMeshFlag", false);
 
   // Output the file name to the terminal for verification
   Info << "Raster file specified: " << rasterFile << endl;
@@ -1122,95 +1123,95 @@ int main(int argc, char *argv[])
         pDeform[pointi].z() = interpDz;
     } // closes pDeform Loop
       
-    // Sout << "End loop" << endl; 
-
 
     pointField newPoints(zeroPoints + pDeform);
 
     mesh.setPoints(newPoints);
 
-    const faceList& pFaces = mesh.faces();
-    const pointField& pPts = mesh.points();
-
-    forAll(faceIndices, facei)
+    if ( checkMeshFlag )
     {
+        const faceList& pFaces = mesh.faces();
+        const pointField& pPts = mesh.points();
 
-        face f = pFaces[faceIndices[facei]];
-
-        // Compute an estimate of the centre as the average of the points
-        point pAvg = Zero;
-
-        forAll(f, fp)
+        forAll(faceIndices, facei)
         {
-            pAvg += pPts[f[fp]];
-        }
-        pAvg /= f.size();
 
-        // Compute the face area normal and unit normal by summing up the
-        // normals of the triangles formed by connecting each edge to the
-        // point average.
-        vector sumA = Zero;
+            face f = pFaces[faceIndices[facei]];
 
-        forAll(f, fp)
-        {
-            const point& p = pPts[f[fp]];
-            const point& pNext = pPts[f.nextLabel(fp)];
+            // Compute an estimate of the centre as the average of the points
+            point pAvg = Zero;
 
-            const vector a = (pNext - p)^(pAvg - p);
+            forAll(f, fp)
+            {
+                pAvg += pPts[f[fp]];
+            }
+            pAvg /= f.size();
 
-            sumA += a;
-        }
-        const vector sumAHat = normalised(sumA);
+            // Compute the face area normal and unit normal by summing up the
+            // normals of the triangles formed by connecting each edge to the
+            // point average.
+            vector sumA = Zero;
 
-        // Compute the area-weighted sum of the triangle centres. Note use
-        // the triangle area projected in the direction of the face normal
-        // as the weight, *not* the triangle area magnitude. Only the
-        // former makes the calculation independent of the initial estimate.
-        scalar sumAn = 0;
-        vector sumAnc = Zero;
-        forAll(f, fp)
-        {
-            const point& p = pPts[f[fp]];
-            const point& pNext = pPts[f.nextLabel(fp)];
+            forAll(f, fp)
+            {
+                const point& p = pPts[f[fp]];
+                const point& pNext = pPts[f.nextLabel(fp)];
 
-            const vector a = (pNext - p)^(pAvg - p);
-            const vector c = p + pNext + pAvg;
+                const vector a = (pNext - p)^(pAvg - p);
 
-            const scalar an = a & sumAHat;
+                sumA += a;
+            }
+            const vector sumAHat = normalised(sumA);
 
-            sumAn += an;
-            sumAnc += an*c;
-        }
+            // Compute the area-weighted sum of the triangle centres. Note use
+            // the triangle area projected in the direction of the face normal
+            // as the weight, *not* the triangle area magnitude. Only the
+            // former makes the calculation independent of the initial estimate.
+            scalar sumAn = 0;
+            vector sumAnc = Zero;
+            forAll(f, fp)
+            {
+                const point& p = pPts[f[fp]];
+                const point& pNext = pPts[f.nextLabel(fp)];
 
-        point fc = (1.0/3.0)*sumAnc/sumAn;
+                const vector a = (pNext - p)^(pAvg - p);
+                const vector c = p + pNext + pAvg;
 
-        // Calculate the sum of magnitude of areas and compare to magnitude
-        // of sum of areas.
+                const scalar an = a & sumAHat;
 
-        scalar summA = 0.0;
-        vector sumN(0.0,0.0,0.0);
+                sumAn += an;
+                sumAnc += an*c;
+            }
 
-        forAll(f, fp)
-        {
-            const point& thisPoint = pPts[f[fp]];
-            const point& nextPoint = pPts[f.nextLabel(fp)];
+            point fc = (1.0/3.0)*sumAnc/sumAn;
 
-            // Triangle around fc.
-            const vector n = 0.5*((nextPoint - thisPoint)^(fc - thisPoint));
+            // Calculate the sum of magnitude of areas and compare to magnitude
+            // of sum of areas.
+
+            scalar summA = 0.0;
+            vector sumN(0.0,0.0,0.0);
+
+            forAll(f, fp)
+            {
+                const point& thisPoint = pPts[f[fp]];
+                const point& nextPoint = pPts[f.nextLabel(fp)];
+
+                // Triangle around fc.
+                const vector n = 0.5*((nextPoint - thisPoint)^(fc - thisPoint));
             
-            summA += mag(n);
-            sumN += n;
+                summA += mag(n);
+                sumN += n;
+            }
+
+            scalar magArea = mag(sumN);
+            scalar faceFlatness = magArea/(summA);  
+            if ( faceFlatness < 0.98 )
+            {   
+                Sout << "Proc" << Pstream::myProcNo() << " face " << facei 
+                     << " centre " << fc << " flatness " << faceFlatness << endl; 
+            }               
         }
-
-        scalar magArea = mag(sumN);
-        scalar faceFlatness = magArea/(summA);  
-        if ( faceFlatness < 0.98 )
-        {   
-            Sout << "Proc" << Pstream::myProcNo() << " face " << facei 
-                 << " centre " << fc << " flatness " << faceFlatness << endl; 
-        }               
     }
-
     /*
 
     const vectorField& fCtrs = mesh.faceCentres();
