@@ -38,6 +38,7 @@ Description
 #include "Pstream.H"
 #include "tetPointRef.H"
 #include "OFstream.H"
+#include "globalIndex.H"
 
 using namespace Foam;
 
@@ -738,7 +739,21 @@ int main(int argc, char *argv[])
     pointField zeroPoints(mesh.points());
     pointField pDeform(0.0*zeroPoints);
 
+    const globalIndex globalPoints(mesh.nPoints());
 
+    // Local number of points and cells
+    label localNumPoints = mesh.points().size();
+
+    // Output the global number of points and cells
+    Info << "Local number of points: " << localNumPoints << endl;
+    
+    reduce(localNumPoints, sumOp<scalar>());  // global sum   
+    
+    label globalNumPoints(localNumPoints);
+    
+    // Output the global number of points and cells
+    Info << "Global number of points: " << globalNumPoints << endl << endl;
+    
 
     // Lists for the face vertexes at z=0 and for the area and deformation at these points
     scalarList pX;
@@ -746,6 +761,7 @@ int main(int argc, char *argv[])
     scalarList pZ;
     scalarList pArea;
     scalarList pDz;
+    labelList  localIdx;
 
     point pEval(zeroPoints[0]);
     
@@ -755,7 +771,7 @@ int main(int argc, char *argv[])
 
         pEval = mesh.points()[pointi];
 
-        if ( pEval.z() < 1e-3 )
+        if ( mag(pEval.z()) < 1e-3 )
         {    
 
             Tuple2<scalar, scalar> result;
@@ -766,16 +782,36 @@ int main(int argc, char *argv[])
             scalar interpDz = result.first();
             scalar interpArea = result.second();   
             
-            pX.append( pEval.x() );  // If outside the raster bounds, set to a default value (e.g., 0)
+            pX.append( pEval.x() );
             pY.append( pEval.y() );
             pZ.append( 0.0 );
             pArea.append( interpArea );
             pDz.append( interpDz );
+            localIdx.append( pointi );
+
         }
 
     } 
 
+    // create list of labels in the original global mesh
+    labelList globalIdx(localIdx.size());
+    forAll(localIdx, pointi)
+    {
+        globalIdx[pointi] = globalPoints.toGlobal(pointi);
+    }
+
+    syncTools::syncPointList
+    (
+        mesh,
+        localIdx,
+        globalIdx,
+        minEqOp<label>(),
+        labelMax
+    );
+
+
     Sout << "Proc" << Pstream::myProcNo() << " z=0 points " << pArea.size() << endl;
+
       
     word patchName = "top";  // Hardcode the patchName for boundary of interest
 
@@ -798,10 +834,8 @@ int main(int argc, char *argv[])
 
     // Access the patch
     const fvPatch& patchTop = mesh.boundary()[patchID];
-    // Info << "" << endl ;
-    // Info << "patchName = " << patchName << endl ;
-    // Info << "patchID = " << patchID << endl ;
-    // Info << "" << endl ;
+
+    Sout << "Proc" << Pstream::myProcNo() << " zTop faces/points " << patchTop.size() << endl;
 
 
     scalarField topCentresX(patchTop.size());
@@ -809,6 +843,7 @@ int main(int argc, char *argv[])
     scalarField topCentresZ(patchTop.size());
     scalarField topAreas(patchTop.size());
     scalarField dzTop(patchTop.size());
+    labelField globalIdxTop(patchTop.size());
 
     forAll(patchTop, facei)
     {
@@ -816,7 +851,8 @@ int main(int argc, char *argv[])
         topCentresY[facei] = faceCentres[patchTop.start() + facei].y();
         topCentresZ[facei] = faceCentres[patchTop.start() + facei].z();
         topAreas[facei] =  magFaceAreas[patchTop.start() + facei];
-        dzTop[facei] = maxTopo;        
+        dzTop[facei] = maxTopo; 
+        globalIdxTop[facei] = -1;       
     }
 
     List<scalarField> concatenatedPointsX(Pstream::nProcs());
@@ -834,6 +870,10 @@ int main(int argc, char *argv[])
     List<scalarField> concatenatedAreas(Pstream::nProcs());
     concatenatedAreas[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
 
+    List<labelField> concatenatedGlobalIndex(Pstream::nProcs());
+    concatenatedGlobalIndex[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+
+
     // Copy the first field into the new field
     for (label i = 0; i < pDz.size(); ++i)
     {
@@ -842,6 +882,7 @@ int main(int argc, char *argv[])
         concatenatedPointsZ[Pstream::myProcNo()][i] = pZ[i];
         concatenatedAreas[Pstream::myProcNo()][i] = pArea[i];
         concatenatedDz[Pstream::myProcNo()][i] = pDz[i];
+        concatenatedGlobalIndex[Pstream::myProcNo()][i] = globalIdx[i];
     }
 
     // Copy the second field into the new field, starting after the end of the first
@@ -852,22 +893,22 @@ int main(int argc, char *argv[])
         concatenatedPointsZ[Pstream::myProcNo()][i + pZ.size()] = topCentresZ[i];
         concatenatedAreas[Pstream::myProcNo()][i + pArea.size()] = topAreas[i];
         concatenatedDz[Pstream::myProcNo()][i + pDz.size()] = dzTop[i];
+        concatenatedGlobalIndex[Pstream::myProcNo()][i + pDz.size()] = globalIdxTop[i];
     }
 
     Pstream::gatherList<scalarField>(concatenatedPointsX);
-    Pstream::scatterList<scalarField>(concatenatedPointsX);
-
     Pstream::gatherList<scalarField>(concatenatedPointsY);
-    Pstream::scatterList<scalarField>(concatenatedPointsY);
-
     Pstream::gatherList<scalarField>(concatenatedPointsZ);
-    Pstream::scatterList<scalarField>(concatenatedPointsZ);
-
     Pstream::gatherList<scalarField>(concatenatedAreas);
-    Pstream::scatterList<scalarField>(concatenatedAreas);
-
     Pstream::gatherList<scalarField>(concatenatedDz);
+    Pstream::gatherList<labelField>(concatenatedGlobalIndex);
+
+    Pstream::scatterList<scalarField>(concatenatedPointsX);
+    Pstream::scatterList<scalarField>(concatenatedPointsY);
+    Pstream::scatterList<scalarField>(concatenatedPointsZ);
+    Pstream::scatterList<scalarField>(concatenatedAreas);
     Pstream::scatterList<scalarField>(concatenatedDz);
+    Pstream::scatterList<labelField>(concatenatedGlobalIndex);
 
     scalarField globalPointsX;
     scalarField globalPointsY;
@@ -875,35 +916,36 @@ int main(int argc, char *argv[])
     scalarField globalDz;
     scalarField globalAreas;
     
-    /*
+    // bool for points alreay added    
+    boolList addedPoint(globalNumPoints, false);
+    
+    
+    // loop over processors to create global list removing duplicated points
     for (label i = 0; i < Pstream::nProcs(); ++i)
     {
-        globalPointsX.append(concatenatedPointsX[i]);
-        globalPointsY.append(concatenatedPointsY[i]);
-        globalPointsZ.append(concatenatedPointsZ[i]);
-        globalDz.append(concatenatedDz[i]);
-        globalAreas.append(concatenatedAreas[i]);
-    }
-    */
-
-    for (label i = 0; i < Pstream::nProcs(); ++i)
-    {
+        Info << "Merging proc " << i << endl;
         forAll(concatenatedDz[i],pi)
         {
             // The points belonging to more than one processor
             // should not be added twice
             // "accept" becomes false when the point already exists
+            label globalI = concatenatedGlobalIndex[i][pi];            
+
             bool accept(true);
-            forAll(globalPointsX,addedPi)
+            
+            if ( globalI > 0)
             {
-                if ( (mag(globalPointsX[addedPi]-concatenatedPointsX[i][pi])< 1.e-3) &&
-                     (mag(globalPointsY[addedPi]-concatenatedPointsY[i][pi])< 1.e-3) &&
-                     (mag(globalPointsZ[addedPi]-concatenatedPointsZ[i][pi])< 1.e-3) )
+                if ( addedPoint[globalI] )
                 {
                     accept = false;
-                    break;
+                    // Info << "Point " << globalI << " already added" << endl;
+                }
+                else
+                {
+                    addedPoint[globalI] = true;
                 }
             }
+            
             if (accept)
             {
                 globalPointsX.append(concatenatedPointsX[i][pi]);
@@ -914,7 +956,7 @@ int main(int argc, char *argv[])
             }            
         }
     }
-
+    
     Info << "Global points for deformation " << globalDz.size() << endl;
 
     /*
@@ -1031,13 +1073,21 @@ int main(int argc, char *argv[])
         }
         else
         {    
-
-            // Info << "Proc" << Pstream::myProcNo() << " " << pDeform.size()-pointi 
-            //     << " " << pointi << endl;
-
+            // interpolation for z<=0
+            
+            /*
             interpDz = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, 
                                    globalPointsX, globalPointsY, globalPointsZ, globalDz, 
                                    globalAreas);
+            */
+
+            // interpolation based on (x,y) coordinates and with linear dependence on zRel
+            Tuple2<scalar, scalar> result;
+
+            result = inverseDistanceInterpolationDzBottom(pEval, globalPX, globalPY, 
+                                globalPAreas, globalPDz, interpRelRadius);
+                 
+            interpDz = result.first();
 
             pDeform[pointi].x() = 0.0;
             pDeform[pointi].y() = 0.0;
