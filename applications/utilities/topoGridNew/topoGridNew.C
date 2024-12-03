@@ -812,6 +812,12 @@ int main(int argc, char *argv[])
 
     Sout << "Proc" << Pstream::myProcNo() << " z=0 points " << pArea.size() << endl;
 
+    // Local number of points and cells
+    label globalZ0Points = pArea.size();
+    
+    reduce(globalZ0Points, sumOp<scalar>());  // global sum   
+
+    Info << "Total z=0 points " << globalZ0Points << endl;
       
     word patchName = "top";  // Hardcode the patchName for boundary of interest
 
@@ -836,6 +842,17 @@ int main(int argc, char *argv[])
     const fvPatch& patchTop = mesh.boundary()[patchID];
 
     Sout << "Proc" << Pstream::myProcNo() << " zTop faces/points " << patchTop.size() << endl;
+
+    // Local number of points and cells
+    label globalZtopPoints = patchTop.size();
+    
+    reduce(globalZtopPoints, sumOp<scalar>());  // global sum   
+
+    Info << "Total z=zTop points " << globalZtopPoints << endl;
+
+    label nGlobalPoints(globalZ0Points+globalZtopPoints); 
+
+    Info << "Total interpolation points (including duplicated points) " << nGlobalPoints << endl;
 
 
     scalarField topCentresX(patchTop.size());
@@ -910,15 +927,16 @@ int main(int argc, char *argv[])
     Pstream::scatterList<scalarField>(concatenatedDz);
     Pstream::scatterList<labelField>(concatenatedGlobalIndex);
 
-    scalarField globalPointsX;
-    scalarField globalPointsY;
-    scalarField globalPointsZ;
-    scalarField globalDz;
-    scalarField globalAreas;
+    scalarField globalPointsX(nGlobalPoints);
+    scalarField globalPointsY(nGlobalPoints);
+    scalarField globalPointsZ(nGlobalPoints);
+    scalarField globalDz(nGlobalPoints);
+    scalarField globalAreas(nGlobalPoints);
     
     // bool for points alreay added    
     boolList addedPoint(globalNumPoints, false);
     
+    label totPoints(0);
     
     // loop over processors to create global list removing duplicated points
     for (label i = 0; i < Pstream::nProcs(); ++i)
@@ -947,17 +965,24 @@ int main(int argc, char *argv[])
             }
             
             if (accept)
-            {
-                globalPointsX.append(concatenatedPointsX[i][pi]);
-                globalPointsY.append(concatenatedPointsY[i][pi]);
-                globalPointsZ.append(concatenatedPointsZ[i][pi]);
-                globalDz.append(concatenatedDz[i][pi]);
-                globalAreas.append(concatenatedAreas[i][pi]);
+            {                
+                globalPointsX[totPoints] = concatenatedPointsX[i][pi];
+                globalPointsY[totPoints] = concatenatedPointsY[i][pi];
+                globalPointsZ[totPoints] = concatenatedPointsZ[i][pi];
+                globalDz[totPoints] = concatenatedDz[i][pi];
+                globalAreas[totPoints] = concatenatedAreas[i][pi];
+                totPoints++;
             }            
         }
     }
     
-    Info << "Global points for deformation " << globalDz.size() << endl;
+    globalPointsX.setSize(totPoints);
+    globalPointsY.setSize(totPoints);
+    globalPointsZ.setSize(totPoints);
+    globalDz.setSize(totPoints);
+    globalAreas.setSize(totPoints);
+    
+    Info << "Global points for deformation " << totPoints << endl;
 
     /*
     if ( Pstream::myProcNo() == 0 )
