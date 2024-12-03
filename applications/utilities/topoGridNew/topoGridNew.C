@@ -1036,16 +1036,16 @@ int main(int argc, char *argv[])
 
         if ( percentage >= nextPctg )
         {
-            // Print from the master processor
-            if (Pstream::master()) 
+            Info << "Progress: " << nextPctg << "% completed." << endl;
+            
+            if ( nextPctg >= 100.0 )
             {
-                Info << "Progress: " << nextPctg << "% completed." << endl;
-                nextPctg += 1.0;
+                Sout << "Proc" << Pstream::myProcNo() << " deformation completed" << endl; 
             }
+            
+            nextPctg += 1.0;            
         }
-        
-        
-  
+          
         pEval = mesh.points()[pointi];
 
         scalar zRel = max(0.0,min(1.0, (zMax-pEval.z())/(zMax-0.0)));
