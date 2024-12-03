@@ -1125,8 +1125,9 @@ int main(int argc, char *argv[])
       
 
     pointField newPoints(zeroPoints + pDeform);
-
     mesh.setPoints(newPoints);
+
+    Sout << "Proc" << Pstream::myProcNo() << " mesh updated" << endl; 
 
     if ( checkMeshFlag )
     {
