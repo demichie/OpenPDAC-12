@@ -274,8 +274,8 @@ scalar inverseDistanceInterpolationDz(const scalar& Ldef, const scalar& alpha, c
 
     scalar interpolatedDz(0.0);
 
-    scalar a = 3;
-    scalar b = 5;
+    // scalar a = 3;
+    // scalar b = 5;
 
     // Initialize weights and distance array
     scalarField distances(boundaryDz.size());
@@ -299,7 +299,11 @@ scalar inverseDistanceInterpolationDz(const scalar& Ldef, const scalar& alpha, c
     }
     else
     {
-        weights = boundaryAreas * ( pow((Ldef / distances), a) + pow((alpha * Ldef / distances), b) );  
+        // weights = boundaryAreas * ( pow((Ldef / distances), a) + pow((alpha * Ldef / distances), b) );  
+        scalar Ldef3 = Ldef*Ldef*Ldef;
+        scalar alpha5 = alpha*alpha*alpha*alpha*alpha;
+        scalarField distances3(distances*distances*distances);
+        weights = boundaryAreas * ( Ldef3/distances3 + alpha5 * Ldef3*Ldef*Ldef / (distances3*distances*distances) );  
         interpolatedDz = sum(weights*boundaryDz)/sum(weights);   
     }
 
@@ -313,7 +317,7 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(const point& interna
     scalar interpolatedDz(0.0);
     scalar interpolatedArea(0.0);
 
-    scalar a = 1.0;
+    // scalar a = 1.0;
 
     // Initialize weights and distance array
     scalarField distances(boundaryDz.size());
@@ -331,7 +335,8 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(const point& interna
     }
     else
     {
-        weights = pow((1.0 / distances), a);  
+        // weights = pow((1.0 / distances), a);  
+        weights = 1.0 / distances;  
         weights *= neg( distances - interpRelRadius*minValue);
         interpolatedDz = sum(weights*boundaryDz)/sum(weights);   
         interpolatedArea = sum(weights*boundaryArea)/sum(weights);   
@@ -531,12 +536,6 @@ int main(int argc, char *argv[])
 
     }
     
-
-  double maxTopo(max(elevation));
-  // double minTopo(max(elevation));
-
-  scalar zVert(maxTopo + dzVert);
-
   file.close();
 
   // Get times list
@@ -734,6 +733,13 @@ int main(int argc, char *argv[])
         globalPDz.append(Dz[i]);
         globalPAreas.append(Areas[i]);
     }
+
+    double maxTopo(max(globalPDz));
+    // double minTopo(max(elevation));
+
+    scalar zVert(maxTopo + dzVert);
+
+
 
     Info << "z=0 faces " << globalPAreas.size() << endl;
 
@@ -1058,9 +1064,6 @@ int main(int argc, char *argv[])
             } 
             else
             {
-                // Info << "Proc" << Pstream::myProcNo() << " " << pDeform.size()-pointi 
-                //     << " " << pointi << endl;
-
                 // interpolation based on full 3D weighted inverse distance 
                 interpDz0 = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, globalPointsX, 
                                     globalPointsY, globalPointsZ, globalDz, globalAreas);        
@@ -1073,11 +1076,13 @@ int main(int argc, char *argv[])
                  
                 interpDz1 = zRel * result.first() + ( 1.0-zRel ) * maxTopo;
 
-                // mixed interpolation
+                // mixed interpolation (interpDz1 at bottom and interpDz0 at top)
                 interpDz = std::pow(zRel,zExp)*interpDz1 + (1.0-std::pow(zRel,zExp))*interpDz0;
+                // interpDz = interpDz1;                
             }
  
-            zNew = pEval.z() + zRel * interpDz;
+            // elevation of the deformed point, used to compute the enlargement
+            zNew = pEval.z() + interpDz;
                 
             if (dzVert > 0)
             {
