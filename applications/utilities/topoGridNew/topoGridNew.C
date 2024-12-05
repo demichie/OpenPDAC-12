@@ -269,83 +269,136 @@ scalar minQuality
 
 
 //---------------------------------------------------------------
-scalar inverseDistanceInterpolationDz(const scalar& Ldef, const scalar& alpha, const point& internalPoint, const scalarField& boundaryPointsX, const scalarField& boundaryPointsY, const scalarField& boundaryPointsZ, const scalarField& boundaryDz, const scalarField& boundaryAreas)
+
+scalar inverseDistanceInterpolationDz(
+    const scalar& Ldef, 
+    const scalar& alpha, 
+    const point& internalPoint, 
+    const scalarField& boundaryPointsX, 
+    const scalarField& boundaryPointsY, 
+    const scalarField& boundaryPointsZ, 
+    const scalarField& boundaryDz, 
+    const scalarField& boundaryAreas)
 {
-
+    // Initialize variables
     scalar interpolatedDz(0.0);
+    const label n = boundaryDz.size();
 
-    // scalar a = 3;
-    // scalar b = 5;
+    // Precompute alpha^5
+    const scalar alpha5 = alpha * alpha * alpha * alpha * alpha;
 
-    // Initialize weights and distance array
-    scalarField distances(boundaryDz.size());
-    scalarField weights(boundaryDz.size());
+    // Variables for interpolation
+    scalar minValue = GREAT;
+    label minIndex = -1;
 
-    if ( internalPoint.z() > 1.e-3 )
+    // Compute distances and find the minimum value in one loop
+    scalarField distances(n);
+    for (label i = 0; i < n; ++i)
     {
-        distances = sqrt( sqr(internalPoint.x()-boundaryPointsX) + sqr(internalPoint.y()-boundaryPointsY)  + sqr(internalPoint.z()-boundaryPointsZ));
+        distances[i] = Foam::sqrt(
+            sqr(internalPoint.x() - boundaryPointsX[i]) +
+            sqr(internalPoint.y() - boundaryPointsY[i]) +
+            sqr(internalPoint.z() - boundaryPointsZ[i])
+        );
+
+        if (distances[i] < minValue)
+        {
+            minValue = distances[i];
+            minIndex = i;
+        }
+    }
+
+    // Special case: very close to a boundary point
+    if (minValue < 1.e-5)
+    {
+        interpolatedDz = boundaryDz[minIndex];
     }
     else
     {
-        distances = sqrt( sqr(internalPoint.x()-boundaryPointsX) + sqr(internalPoint.y()-boundaryPointsY) );
-    }
+        // General case: inverse distance weighting
+        scalar Num(0.0);
+        scalar Den(0.0);
 
-    scalar minValue = min(distances);
+        for (label i = 0; i < n; ++i)
+        {
+            scalar LbyD = Ldef / distances[i];
+            scalar LbyD3 = LbyD * LbyD * LbyD;
+            scalar weight = boundaryAreas[i] * (LbyD3 + alpha5 * LbyD3 * LbyD * LbyD);
+            
+            Num += weight * boundaryDz[i];
+            Den += weight;
+        }
 
-    if ( minValue < 1.e-5 ) 
-    {
-        label minIndex = findIndex(distances, minValue);   
-        interpolatedDz = boundaryDz[minIndex];    
-    }
-    else
-    {
-        // weights = boundaryAreas * ( pow((Ldef / distances), a) + pow((alpha * Ldef / distances), b) );  
-        scalar Ldef3 = Ldef*Ldef*Ldef;
-        scalar alpha5 = alpha*alpha*alpha*alpha*alpha;
-        scalarField distances3(distances*distances*distances);
-        weights = boundaryAreas * ( Ldef3/distances3 + alpha5 * Ldef3*Ldef*Ldef / (distances3*distances*distances) );  
-        interpolatedDz = sum(weights*boundaryDz)/sum(weights);   
+        interpolatedDz = Num / Den;
     }
 
     return interpolatedDz;
 }
 
 
-Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(const point& internalPoint, const scalarField& boundaryPointsX, const scalarField& boundaryPointsY, const scalarField& boundaryArea, const scalarField& boundaryDz, const scalar& interpRelRadius)
+Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(
+    const point& internalPoint,
+    const scalarField& boundaryPointsX,
+    const scalarField& boundaryPointsY,
+    const scalarField& boundaryArea,
+    const scalarField& boundaryDz,
+    const scalar& interpRelRadius)
 {
-
     scalar interpolatedDz(0.0);
     scalar interpolatedArea(0.0);
 
-    // scalar a = 1.0;
+    const label n = boundaryDz.size();
+    scalar minValue = GREAT;
+    label minIndex = -1;
 
-    // Initialize weights and distance array
-    scalarField distances(boundaryDz.size());
-    scalarField weights(boundaryDz.size());
-
-    distances = sqrt( sqr(internalPoint.x()-boundaryPointsX) + sqr(internalPoint.y()-boundaryPointsY) );
-
-    scalar minValue = min(distances);
-
-    if ( minValue < 1.e-5 ) 
+    // Calculate distances and find the minimum in a single loop
+    scalarField distances(n);
+    for (label i = 0; i < n; ++i)
     {
-        label minIndex = findIndex(distances, minValue);   
-        interpolatedDz = boundaryDz[minIndex];    
-        interpolatedDz = boundaryArea[minIndex];    
+        distances[i] = Foam::sqrt(
+            Foam::sqr(internalPoint.x() - boundaryPointsX[i]) +
+            Foam::sqr(internalPoint.y() - boundaryPointsY[i])
+        );
+
+        if (distances[i] < minValue)
+        {
+            minValue = distances[i];
+            minIndex = i;
+        }
+    }
+
+    // Special case: very close to a boundary point
+    if (minValue < 1.e-5)
+    {
+        interpolatedDz = boundaryDz[minIndex];
+        interpolatedArea = boundaryArea[minIndex];
     }
     else
     {
-        // weights = pow((1.0 / distances), a);  
-        weights = 1.0 / distances;  
-        weights *= neg( distances - interpRelRadius*minValue);
-        interpolatedDz = sum(weights*boundaryDz)/sum(weights);   
-        interpolatedArea = sum(weights*boundaryArea)/sum(weights);   
+        // General case: weighted interpolation
+        scalar NumDz(0.0), NumArea(0.0), Den(0.0);
+
+        const scalar radiusThreshold = interpRelRadius * minValue;
+
+        for (label i = 0; i < n; ++i)
+        {
+            scalar distance = distances[i];
+            scalar weight = 1.0 / distance;
+
+            // Neglect points outside the relative radius
+            if (distance > radiusThreshold)
+                weight = 0.0;
+
+            NumDz += weight * boundaryDz[i];
+            NumArea += weight * boundaryArea[i];
+            Den += weight;
+        }
+
+        interpolatedDz = NumDz / Den;
+        interpolatedArea = NumArea / Den;
     }
 
-    Tuple2<scalar, scalar> result(interpolatedDz, interpolatedArea);
-   
-
-    return result;
+    return Tuple2<scalar, scalar>(interpolatedDz, interpolatedArea);
 }
 
 // Function to calculate the average of a sub-block
