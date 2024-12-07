@@ -288,50 +288,34 @@ scalar inverseDistanceInterpolationDz(
     const scalar alpha5 = alpha * alpha * alpha * alpha * alpha;
 
     // Variables for interpolation
-    scalar minValue = GREAT;
-    label minIndex = -1;
+    scalar Num(0.0);
+    scalar Den(0.0);
+    scalar distance;
 
-    // Compute distances and find the minimum value in one loop
-    scalarField distances(n);
     for (label i = 0; i < n; ++i)
     {
-        distances[i] = Foam::sqrt(
+        distance = Foam::sqrt(
             sqr(internalPoint.x() - boundaryPointsX[i]) +
             sqr(internalPoint.y() - boundaryPointsY[i]) +
             sqr(internalPoint.z() - boundaryPointsZ[i])
         );
 
-        if (distances[i] < minValue)
+        if (distance < 1.e-5)
         {
-            minValue = distances[i];
-            minIndex = i;
+            interpolatedDz = boundaryDz[i];
+            return interpolatedDz;
         }
-    }
 
-    // Special case: very close to a boundary point
-    if (minValue < 1.e-5)
-    {
-        interpolatedDz = boundaryDz[minIndex];
-    }
-    else
-    {
-        // General case: inverse distance weighting
-        scalar Num(0.0);
-        scalar Den(0.0);
-
-        for (label i = 0; i < n; ++i)
-        {
-            scalar LbyD = Ldef / distances[i];
-            scalar LbyD3 = LbyD * LbyD * LbyD;
-            scalar weight = boundaryAreas[i] * (LbyD3 + alpha5 * LbyD3 * LbyD * LbyD);
+        scalar LbyD = Ldef / distance;
+        scalar LbyD3 = LbyD * LbyD * LbyD;
+        scalar weight = boundaryAreas[i] * (LbyD3 + alpha5 * LbyD3 * LbyD * LbyD);
             
-            Num += weight * boundaryDz[i];
-            Den += weight;
-        }
-
-        interpolatedDz = Num / Den;
+        Num += weight * boundaryDz[i];
+        Den += weight;        
     }
 
+    interpolatedDz = Num / Den;
+    
     return interpolatedDz;
 }
 
