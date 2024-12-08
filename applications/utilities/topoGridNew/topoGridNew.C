@@ -450,178 +450,172 @@ int main(int argc, char *argv[])
 #include "createTime.H"
 #include "createMesh.H"
   
-  // Read the dictionary file (topoGridDict) from the "system" folder
-  IOdictionary topoDict
-    (
-     IOobject
-     (
-      "topoGridDict",
-      runTime.system(),
-      mesh,
-      IOobject::MUST_READ,
-      IOobject::NO_WRITE
-      )
-     );
+// Read the dictionary file (topoGridDict) from the "system" folder
+IOdictionary topoDict
+  (
+   IOobject
+   (
+    "topoGridDict",
+    runTime.system(),
+    mesh,
+    IOobject::MUST_READ,
+    IOobject::NO_WRITE
+   )
+  );
 
-  // Read the raster file name from the dictionary
-  const word rasterFile = topoDict.lookup<word>("rasterFile");
+// Read the raster file name from the dictionary
+const word rasterFile = topoDict.lookup<word>("rasterFile");
 
-  // Read the vent center coordinates from the dictionary
-  const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
-  const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
-  const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
-  const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
-  const scalar interpRelRadius = topoDict.lookupOrDefault<scalar>("interpRelRadius",4.0);
-  const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
-  const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
-  const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
-  const Switch checkMeshFlag = topoDict.lookupOrDefault<Switch>("checkMeshFlag", false);
+// Read the vent center coordinates from the dictionary
+const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
+const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
+const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
+const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
+const scalar interpRelRadius = topoDict.lookupOrDefault<scalar>("interpRelRadius",4.0);
+const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
+const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
+const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
+const Switch checkMeshFlag = topoDict.lookupOrDefault<Switch>("checkMeshFlag", false);
 
-  // Output the file name to the terminal for verification
-  Info << "Raster file specified: " << rasterFile << endl;
+// Output the file name to the terminal for verification
+Info << "Raster file specified: " << rasterFile << endl;
 
-  // Read the ESRI ASCII Raster file
-  std::ifstream file(rasterFile);
+// Read the ESRI ASCII Raster file
+std::ifstream file(rasterFile);
     
-  if (!file.is_open()) 
-    {
-      FatalErrorInFunction
+if (!file.is_open()) 
+{
+    FatalErrorInFunction
         << "Unable to open the raster file: " << rasterFile << exit(FatalError);
-    }
+}
 
 
-  int ncols = 0, nrows = 0;
-  double xllcorner = 0.0, yllcorner = 0.0, cellsize = 0.0;
-  double NODATA_value = -9999.0;
-  std::string line;
+int ncols = 0, nrows = 0;
+double xllcorner = 0.0, yllcorner = 0.0, cellsize = 0.0;
+double NODATA_value = -9999.0;
+std::string line;
 
-  // Read the header
-  while (std::getline(file, line))
-    {
-      std::istringstream iss(line);
-      std::string key;
-      iss >> key;
+// Read the header
+while (std::getline(file, line))
+{
+    std::istringstream iss(line);
+    std::string key;
+    iss >> key;
 
-      if (key == "ncols")
+    if (key == "ncols")
         iss >> ncols;
-      else if (key == "nrows")
+    else if (key == "nrows")
         iss >> nrows;
-      else if (key == "xllcorner" || key == "xllcenter")
+    else if (key == "xllcorner" || key == "xllcenter")
         iss >> xllcorner;
-      else if (key == "yllcorner" || key == "yllcenter")
+    else if (key == "yllcorner" || key == "yllcenter")
         iss >> yllcorner;
-      else if (key == "cellsize")
+    else if (key == "cellsize")
         iss >> cellsize;
-      else if (key == "NODATA_value")
+    else if (key == "NODATA_value")
         iss >> NODATA_value;
-      if (key == "NODATA_value")
+    if (key == "NODATA_value")
         break;
-    }
+}
 
-  xllcorner -= xVent;
-  yllcorner -= yVent;
+xllcorner -= xVent;
+yllcorner -= yVent;
 
-  // Create a RectangularMatrix to store the elevation data
-  RectangularMatrix<double> elevation(nrows, ncols, 0.0);
+// Create a RectangularMatrix to store the elevation data
+RectangularMatrix<double> elevation(nrows, ncols, 0.0);
 
-  // Read the elevation data and store it in the RectangularMatrix
-  for (int i = 0; i < nrows; ++i)
+// Read the elevation data and store it in the RectangularMatrix
+for (int i = 0; i < nrows; ++i)
+{
+    std::getline(file, line);
+    std::istringstream iss(line);
+
+    for (int j = 0; j < ncols; ++j)
     {
-      std::getline(file, line);
-      std::istringstream iss(line);
+        double value;
+        iss >> value;
 
-      for (int j = 0; j < ncols; ++j)
-        {
-          double value;
-          iss >> value;
-
-          if (value == NODATA_value)
+        if (value == NODATA_value)
             value = 0.0;  // Handle NODATA_value appropriately
 
-          elevation(nrows-1-i, j) = value;
-        }
+        elevation(nrows-1-i, j) = value;
     }
+}
 
-  if (saveSTL)
-    {
+if (saveSTL)
+{    
+    // Subsample the matrix with a factor of 4
+    label factor = 2;
+    RectangularMatrix<double> elevationSubsampled = subsampleMatrix(elevation, ncols, nrows, factor);
+
+    scalar xllSubsampled(xllcorner+(0.5*factor)*cellsize);
+    scalar yllSubsampled(yllcorner+(0.5*factor)*cellsize);
+
+    scalar cellsizeSubsampled(factor*cellsize);
     
-      // Subsample the matrix with a factor of 4
-      label factor = 2;
-      RectangularMatrix<double> elevationSubsampled = subsampleMatrix(elevation, ncols, nrows, factor);
+    // Create the output STL file name based on the input raster file
+    word stlFileName(rasterFile);
+    stlFileName.replace(".asc", ".stl");
+    Info << "Saving STL file: " << stlFileName << endl;
 
-      scalar xllSubsampled(xllcorner+(0.5*factor)*cellsize);
-      scalar yllSubsampled(yllcorner+(0.5*factor)*cellsize);
-
-      scalar cellsizeSubsampled(factor*cellsize);
-    
-      // Create the output STL file name based on the input raster file
-      word stlFileName(rasterFile);
-      stlFileName.replace(".asc", ".stl");
-      Info << "Saving STL file: " << stlFileName << endl;
-
-      // Write the STL surface to a file
+    // Write the STL surface to a file
         
-      if (saveBinary)
-        {        
-          writeBinarySTL(stlFileName, elevationSubsampled, xllSubsampled, yllSubsampled, cellsizeSubsampled);
-        }
-      else
-        {
-          writeSTL(stlFileName, elevationSubsampled, xllSubsampled, yllSubsampled, cellsizeSubsampled);        
-        }
-      Info << "Saving completed" << endl;
-
+    if (saveBinary)
+    {        
+        writeBinarySTL(stlFileName, elevationSubsampled, xllSubsampled, yllSubsampled, cellsizeSubsampled);
     }
-    
-  file.close();
-
-  // Get times list
-  instantList Times = runTime.times();
-
-  // skip "constant" time
-  for (label timeI = 1; timeI < Times.size(); ++timeI)
+    else
     {
-      runTime.setTime(Times[timeI], timeI);
-
-      Info<< "Time = " << runTime.userTimeName() << endl;
-
-      scalar xMin = min(mesh.Cf().component(0)).value();
-      scalar xMax = max(mesh.Cf().component(0)).value();
-
-      reduce(xMin, minOp<scalar>());
-      reduce(xMax, maxOp<scalar>());
-
-      Info << "xMin = " << xMin << endl;
-      Info << "xMax = " << xMax << endl;
-
-      scalar yMin = min(mesh.Cf().component(1)).value();
-      scalar yMax = max(mesh.Cf().component(1)).value();
-
-      reduce(yMin, minOp<scalar>());
-      reduce(yMax, maxOp<scalar>());
-
-      Info << "yMin = " << yMin << endl;
-      Info << "yMax = " << yMax << endl;
-
-      scalar zMin = min(mesh.Cf().component(2)).value();
-      scalar zMax = max(mesh.Cf().component(2)).value();
-
-      reduce(zMin, minOp<scalar>());
-      reduce(zMax, maxOp<scalar>());
+        writeSTL(stlFileName, elevationSubsampled, xllSubsampled, yllSubsampled, cellsizeSubsampled);        
+    }
+    Info << "Saving completed" << endl;
+}
     
-      Info << "zMin = " << zMin << endl;
-      Info << "zMax = " << zMax << endl;
+file.close();
+
+// Get times list
+instantList Times = runTime.times();
+
+// skip "constant" time
+for (label timeI = 1; timeI < Times.size(); ++timeI)
+{
+    runTime.setTime(Times[timeI], timeI);
+
+    Info<< "Time = " << runTime.userTimeName() << endl;
+
+    scalar xMin = min(mesh.Cf().component(0)).value();
+    scalar xMax = max(mesh.Cf().component(0)).value();
+
+    reduce(xMin, minOp<scalar>());
+    reduce(xMax, maxOp<scalar>());
+
+    Info << "xMin = " << xMin << endl;
+    Info << "xMax = " << xMax << endl;
+
+    scalar yMin = min(mesh.Cf().component(1)).value();
+    scalar yMax = max(mesh.Cf().component(1)).value();
+
+    reduce(yMin, minOp<scalar>());
+    reduce(yMax, maxOp<scalar>());
+
+    Info << "yMin = " << yMin << endl;
+    Info << "yMax = " << yMax << endl;
+
+    scalar zMin = min(mesh.Cf().component(2)).value();
+    scalar zMax = max(mesh.Cf().component(2)).value();
+
+    reduce(zMin, minOp<scalar>());
+    reduce(zMax, maxOp<scalar>());
+  
+    Info << "zMin = " << zMin << endl;
+    Info << "zMax = " << zMax << endl;
  
-      scalar Ldef(0.5*std::sqrt( sqr(xMax-xMin) + sqr(yMax-yMin) + sqr(zMax-zMin) ));
+    scalar Ldef(0.5*std::sqrt( sqr(xMax-xMin) + sqr(yMax-yMin) + sqr(zMax-zMin) ));
 
-      Info << "Ldef = " << Ldef << endl << endl;
-
-    
-      scalar z2Rel(0.0);
-      scalar zNew(0.0);
-
-
-//---------------------------------------------------------------------------------------------
+    Info << "Ldef = " << Ldef << endl << endl;
+   
+    scalar z2Rel(0.0);
+    scalar zNew(0.0);
 
     const vectorField& faceAreas = mesh.faceAreas();
     const vectorField& faceCentres = mesh.faceCentres();
