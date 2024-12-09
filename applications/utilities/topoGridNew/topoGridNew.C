@@ -1056,6 +1056,8 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
     scalar zExp = 5.0;
 
     const label totalPoints = mesh.points().size();
+    label maxTotalPoints = totalPoints;
+    reduce(maxTotalPoints, maxOp<label>());
     // const label nProcs = Pstream::nProcs();  // Total number of processors
     // const label procRank = Pstream::myProcNo();  // Current processor rank
 
@@ -1069,17 +1071,17 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
            
         localCount++;      
         percentage = 100.0 * static_cast<scalar>(localCount) / totalPoints;
+        scalar GlobalPercentage = 100.0 * static_cast<scalar>(localCount) / maxTotalPoints;
         // reduce(percentage, minOp<scalar>());
 
-        if ( percentage >= nextPctg )
+        if ( percentage >= 100.0 )
+        {
+            Sout << "Proc" << Pstream::myProcNo() << " deformation completed" << endl; 
+        }
+
+        if ( GlobalPercentage >= nextPctg )
         {
             Info << "Progress: " << nextPctg << "% completed." << endl;
-            
-            if ( nextPctg >= 100.0 )
-            {
-                Sout << "Proc" << Pstream::myProcNo() << " deformation completed" << endl; 
-            }
-            
             nextPctg += 1.0;            
         }
           
@@ -1107,14 +1109,15 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
                  
                 interpDz1 = zRel * result.first() + ( 1.0-zRel ) * maxTopo;
 
-                // mixed interpolation (interpDz1 at bottom and interpDz0 at top)
+                // blended interpolation (interpDz1 at bottom and interpDz0 at top)
                 interpDz = std::pow(zRel,zExp)*interpDz1 + (1.0-std::pow(zRel,zExp))*interpDz0;
                 // interpDz = interpDz1;                
             }
  
-            // elevation of the deformed point, used to compute the enlargement
+            // new elevation of the deformed point, used to compute the enlargement
             zNew = pEval.z() + interpDz;
-                
+
+            // compute coefficient for horizontal enlargement                
             if (dzVert > 0)
             {
                 // enlarge from a fixed height above the maximum
@@ -1143,7 +1146,7 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
                                    globalAreas);
             */
 
-            // interpolation based on (x,y) coordinates and with linear dependence on zRel
+            // interpolation based on (x,y) coordinates only
             Tuple2<scalar, scalar> result;
 
             result = inverseDistanceInterpolationDzBottom(pEval, globalPX, globalPY, 
