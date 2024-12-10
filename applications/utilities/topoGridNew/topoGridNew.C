@@ -136,13 +136,22 @@ void writeBinarySTL(const word& stlFileName, const RectangularMatrix<scalar>& el
         for (label j = 0; j < numCols - 1; ++j)
         {
             // Get corner points of the cell
-            point p1(xOffset + j * cellSize, yOffset + i * cellSize, elevation(i, j));           // Top-left corner
-            point p2(xOffset + (j + 1) * cellSize, yOffset + i * cellSize, elevation(i, j + 1));  // Top-right corner
-            point p3(xOffset + j * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j));  // Bottom-left corner
-            point p4(xOffset + (j + 1) * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j + 1));  // Bottom-right corner
+
+            // Top-left corner
+            point p1(xOffset + j * cellSize, yOffset + i * cellSize, elevation(i, j));
+            
+            // Top-right corner
+            point p2(xOffset + (j + 1) * cellSize, yOffset + i * cellSize, elevation(i, j + 1));
+
+            // Bottom-left corner
+            point p3(xOffset + j * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j));
+            
+            // Bottom-right corner
+            point p4(xOffset + (j + 1) * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j + 1));
 
             // First triangle (p1, p2, p3)
             vector normal1 = computeNormal(p1, p2, p3);
+
             // Info << p1 << p2 << p3 << normal1 << endl;
             writeBinaryTriangle(stlFile, normal1, p1, p2, p3);
 
@@ -178,11 +187,18 @@ void writeSTL(const word& stlFileName, const RectangularMatrix<scalar>& elevatio
         for (label j = 0; j < numCols - 1; ++j)
         {
             // Get corner points of the cell (elevation grid)
-            vector p1(xOffset + j * cellSize, yOffset + i * cellSize, elevation(i, j));           // Top-left corner
-            vector p2(xOffset + (j + 1) * cellSize, yOffset + i * cellSize, elevation(i, j + 1));  // Top-right corner
-            vector p3(xOffset + j * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j));  // Bottom-left corner
-            vector p4(xOffset + (j + 1) * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j + 1));  // Bottom-right corner
 
+            // Top-left corner
+            vector p1(xOffset + j * cellSize, yOffset + i * cellSize, elevation(i, j));
+
+            // Top-right corner
+            vector p2(xOffset + (j + 1) * cellSize, yOffset + i * cellSize, elevation(i, j + 1));
+
+            // Bottom-left corner
+            vector p3(xOffset + j * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j));
+
+            // Bottom-right corner
+            vector p4(xOffset + (j + 1) * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j + 1));
             // First triangle (p1, p2, p3) - Top-left, top-right, bottom-left
             vector normal1 = computeNormal(p1, p2, p3);
             stlFile << "  facet normal " << normal1.x() << " " << normal1.y() << " " << normal1.z() << "\n";
@@ -1048,18 +1064,12 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
     Info << "alpha " << alphaAll << endl;
 
     scalar interpDz(0.0);
-    scalar interpDz0(0.0);
-    scalar interpDz1(0.0);
 
     alphaAll = 10.0;
-
-    scalar zExp = 5.0;
 
     const label totalPoints = mesh.points().size();
     label maxTotalPoints = totalPoints;
     reduce(maxTotalPoints, maxOp<label>());
-    // const label nProcs = Pstream::nProcs();  // Total number of processors
-    // const label procRank = Pstream::myProcNo();  // Current processor rank
 
     label localCount = 0;  // Count of processed points by this processor
     // Loop over all points in the mesh to interpolate vertical deformation
@@ -1087,78 +1097,43 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
           
         pEval = mesh.points()[pointi];
 
-        scalar zRel = max(0.0,min(1.0, (zMax-pEval.z())/(zMax-0.0)));
-               
-        if ( pEval.z() > 1.e-3 )
+        if ( mag(pEval.z()-zMax) < 1.e-3 )
         {
-            if ( mag(pEval.z()-zMax) < 1.e-3 )
+            interpDz = maxTopo;  
+        } 
+        else
+        {
+            if ( pEval.z() < 1.e-3 )
             {
-                interpDz = maxTopo;  
-            } 
-            else
-            {
-                // interpolation based on full 3D weighted inverse distance 
-                interpDz0 = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, globalPointsX, 
-                                    globalPointsY, globalPointsZ, globalDz, globalAreas);        
+                // for points on or below the topography consider only (x,y)
+                pEval.z() = 0.0;
+            }    
 
-                // interpolation based on (x,y) coordinates and with linear dependence on zRel
-                Tuple2<scalar, scalar> result;
-
-                result = inverseDistanceInterpolationDzBottom(pEval, globalPX, globalPY, 
-                                    globalPAreas, globalPDz, interpRelRadius);
-                 
-                interpDz1 = zRel * result.first() + ( 1.0-zRel ) * maxTopo;
-
-                // blended interpolation (interpDz1 at bottom and interpDz0 at top)
-                interpDz = std::pow(zRel,zExp)*interpDz1 + (1.0-std::pow(zRel,zExp))*interpDz0;
-                // interpDz = interpDz1;                
-            }
+            // interpolation based on full 3D weighted inverse distance 
+            interpDz = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, globalPointsX, 
+                                globalPointsY, globalPointsZ, globalDz, globalAreas);        
+        }
  
-            // new elevation of the deformed point, used to compute the enlargement
-            zNew = pEval.z() + interpDz;
+        // new elevation of the deformed point, used to compute the enlargement
+        zNew = mesh.points()[pointi].z() + interpDz;
 
-            // compute coefficient for horizontal enlargement                
-            if (dzVert > 0)
-            {
-                // enlarge from a fixed height above the maximum
-                // topography and the top, thus from an horizontal
-                // plane to the top
-                z2Rel = max(0, (zNew - zVert) / (zMax + maxTopo - zVert));
-            }
-            else
-            {
-                // enlarge from the topography to the top
-                z2Rel = (zNew - interpDz) / (zMax + maxTopo - interpDz);
-            }
-            z2Rel = std::pow(z2Rel,exp_shape);
-                
-            pDeform[pointi].x() = z2Rel*(expFactor-1.0)*pEval.x();
-            pDeform[pointi].y() = z2Rel*(expFactor-1.0)*pEval.y();
-             
+        // compute coefficient for horizontal enlargement                
+        if (dzVert > 0)
+        {
+            // enlarge from a fixed height above the maximum
+            // topography and the top, thus from an horizontal
+            // plane to the top
+            z2Rel = max(0, (zNew - zVert) / (zMax + maxTopo - zVert));
         }
         else
-        {    
-            // interpolation for z<=0
-            
-            /*
-            interpDz = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, 
-                                   globalPointsX, globalPointsY, globalPointsZ, globalDz, 
-                                   globalAreas);
-            */
-
-            // interpolation based on (x,y) coordinates only
-            Tuple2<scalar, scalar> result;
-
-            result = inverseDistanceInterpolationDzBottom(pEval, globalPX, globalPY, 
-                                globalPAreas, globalPDz, interpRelRadius);
-                 
-            interpDz = result.first();
-
-            pDeform[pointi].x() = 0.0;
-            pDeform[pointi].y() = 0.0;
-
+        {
+            // enlarge from the topography to the top
+            z2Rel = (zNew - interpDz) / (zMax + maxTopo - interpDz);
         }
-
+        z2Rel = std::pow(z2Rel,exp_shape);
+                
+        pDeform[pointi].x() = z2Rel*(expFactor-1.0)*pEval.x();
+        pDeform[pointi].y() = z2Rel*(expFactor-1.0)*pEval.y();
         pDeform[pointi].z() = interpDz;
     } // closes pDeform Loop
       
