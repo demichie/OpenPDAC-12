@@ -96,9 +96,9 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
      - $L$: Estimated length of the deformation region.
      - $\alpha$: Fraction of $L$, representing the near-body influence region.
      - $d_i$: Euclidean distance to the global point. For the mesh points with $z<0$, we set $z=0$ when computing the distance from the global points.
-  2. Interpolate the vertical deformation ($\Delta z_{\text{3D}}$):
+  2. Interpolate the vertical deformation ($\Delta z_{\text{mesh}}$):
 
-     $$\Delta z_{\text{3D}} = \frac{\sum_i w_i \Delta z_i}{\sum_i w_i}
+     $$\Delta z_{\text{mesh}} = \frac{\sum_i w_i \Delta z_i}{\sum_i w_i}
      $$
 
 
