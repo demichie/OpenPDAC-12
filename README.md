@@ -4,6 +4,8 @@
 
 [![SQAaaS badge shields.io](https://img.shields.io/badge/sqaaas%20software-silver-lightgrey)](https://api.eu.badgr.io/public/assertions/X8BQ_PkhSfuUF9-mGYRykQ "SQAaaS silver badge achieved")
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14363304.svg)](https://doi.org/10.5281/zenodo.14363304)
+
 OpenPDAC is an OpenFOAM module based on the module multiphaseEuler, distributed
 with OpenFOAM.
 
