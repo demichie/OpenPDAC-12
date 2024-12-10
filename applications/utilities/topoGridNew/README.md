@@ -83,42 +83,27 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
 
 ---
 
-## 4. Second Inverse Distance Weighting (IDW) for Internal Mesh Points
+## 4. Second Inverse Distance Weighting (IDW) for all Mesh Points
 
 - **Objective**: Compute the vertical deformation for all internal mesh points using the global list of displacements and areas.
 
-### **3D IDW Interpolation**:
-1. For each internal mesh point, compute the weights ($w_i$) for all global points using:
+### **Mesh IDW Interpolation**:
+1. For each mesh point, compute the weights ($w_i$) for all global points using:
 
    $$w_i = \text{Area}_{i} \cdot \left[\left(\frac{L}{d_i}\right)^3 + \left(\alpha \cdot \frac{L}{d_i}\right)^5\right]
    $$
 
    - $L$: Estimated length of the deformation region.
    - $\alpha$: Fraction of $L$, representing the near-body influence region.
-   - $d_i$: Euclidean distance to the global point.
+   - $d_i$: Euclidean distance to the global point. For the mesh points with $z<0$, we set $z=0$ when computing the distance from the global points.
 2. Interpolate the vertical deformation ($\Delta z_{\text{3D}}$):
 
    $$\Delta z_{\text{3D}} = \frac{\sum_i w_i \Delta z_i}{\sum_i w_i}
    $$
 
 
-### **Bottom-Up Interpolation**:
-- This follows the same procedure as **Step 2**, using only $z = 0$ face centers.
-
-### **Blending**:
-1. Compute the relative height of the mesh point:
-
-   $$z_{\text{rel}} = \frac{z_{\text{mesh}} - z_{\text{min}}}{z_{\text{max}} - z_{\text{min}}}
-   $$
-
-2. Blend the deformations:
-
-   $$\Delta z_{\text{mesh}} = z_{\text{rel}} \cdot \Delta z_{\text{3D}} + (1 - z_{\text{rel}}) \cdot \Delta z_{\text{2D}}
-   $$
-
-
 - **Output**:
-  - Vertical deformation ($\Delta z_{\text{mesh}}$) for all internal mesh points.
+  - Vertical deformation ($\Delta z_{\text{mesh}}$) for all mesh points.
 
 ---
 
