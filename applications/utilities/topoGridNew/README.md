@@ -88,18 +88,18 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
 - **Objective**: Compute the vertical deformation for all mesh points using the global list of displacements and areas.
 
 - **Procedure**:
-1. For each mesh point, compute the weights ($w_i$) for all global points using:
+  1. For each mesh point, compute the weights ($w_i$) for all global points using:
 
-   $$w_i = \text{Area}_{i} \cdot \left[\left(\frac{L}{d_i}\right)^3 + \left(\alpha \cdot \frac{L}{d_i}\right)^5\right]
-   $$
+     $$w_i = \text{Area}_{i} \cdot \left[\left(\frac{L}{d_i}\right)^3 + \left(\alpha \cdot \frac{L}{d_i}\right)^5\right]
+     $$
 
-   - $L$: Estimated length of the deformation region.
-   - $\alpha$: Fraction of $L$, representing the near-body influence region.
-   - $d_i$: Euclidean distance to the global point. For the mesh points with $z<0$, we set $z=0$ when computing the distance from the global points.
-2. Interpolate the vertical deformation ($\Delta z_{\text{3D}}$):
+     - $L$: Estimated length of the deformation region.
+     - $\alpha$: Fraction of $L$, representing the near-body influence region.
+     - $d_i$: Euclidean distance to the global point. For the mesh points with $z<0$, we set $z=0$ when computing the distance from the global points.
+  2. Interpolate the vertical deformation ($\Delta z_{\text{3D}}$):
 
-   $$\Delta z_{\text{3D}} = \frac{\sum_i w_i \Delta z_i}{\sum_i w_i}
-   $$
+     $$\Delta z_{\text{3D}} = \frac{\sum_i w_i \Delta z_i}{\sum_i w_i}
+     $$
 
 
 - **Output**:
