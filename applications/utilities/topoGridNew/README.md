@@ -83,7 +83,7 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
 
 ---
 
-## 4. Second Inverse Distance Weighting (IDW) for Internal Mesh Points
+## 4. Second Inverse Distance Weighting (IDW) for all Mesh Points
 
 - **Objective**: Compute the vertical deformation for all internal mesh points using the global list of displacements and areas.
 
@@ -95,7 +95,7 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
 
    - $L$: Estimated length of the deformation region.
    - $\alpha$: Fraction of $L$, representing the near-body influence region.
-   - $d_i$: Euclidean distance to the global point.
+   - $d_i$: Euclidean distance to the global point. For the mesh points with $z<0$, we set $z=0$ when computing the distance from the global points.
 2. Interpolate the vertical deformation ($\Delta z_{\text{3D}}$):
 
    $$\Delta z_{\text{3D}} = \frac{\sum_i w_i \Delta z_i}{\sum_i w_i}
