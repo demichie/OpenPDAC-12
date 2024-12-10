@@ -87,7 +87,7 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
 
 - **Objective**: Compute the vertical deformation for all mesh points using the global list of displacements and areas.
 
-### **Mesh IDW Interpolation**:
+- **Procedure**:
 1. For each mesh point, compute the weights ($w_i$) for all global points using:
 
    $$w_i = \text{Area}_{i} \cdot \left[\left(\frac{L}{d_i}\right)^3 + \left(\alpha \cdot \frac{L}{d_i}\right)^5\right]
