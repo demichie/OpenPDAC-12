@@ -553,7 +553,8 @@ const scalar interpRelRadius = topoDict.lookupOrDefault<scalar>("interpRelRadius
 const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
 const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
 const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
-const Switch checkMeshFlag = topoDict.lookupOrDefault<Switch>("checkMeshFlag", false);
+const Switch checkMesh = topoDict.lookupOrDefault<Switch>("checkMesh", false);
+const Switch raiseTop = topoDict.lookupOrDefault<Switch>("raiseTop", true);
 
 // Output the file name to the terminal for verification
 Info << "Raster file specified: " << rasterFile << endl;
@@ -829,7 +830,17 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
         globalBottomCentresAreas.append(Areas[i]);
     }
 
-    double maxTopo(max(globalBottomCentresDz));
+    
+
+    double maxTopo;
+    if (raiseTop)
+    {
+        maxTopo = max(globalBottomCentresDz);
+    }
+    else
+    {
+        maxTopo = 0.0;
+    }
     // double minTopo(max(elevation));
 
     scalar zVert(maxTopo + dzVert);
@@ -1176,7 +1187,7 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
 
     Sout << "Proc" << Pstream::myProcNo() << " mesh updated" << endl; 
 
-    if ( checkMeshFlag )
+    if ( checkMesh )
     {
         const faceList& pFaces = mesh.faces();
         const pointField& pPts = mesh.points();
