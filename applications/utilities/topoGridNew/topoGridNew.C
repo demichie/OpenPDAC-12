@@ -283,6 +283,68 @@ scalar minQuality
 }
 
 
+scalar calculateFlatness(const face& f, const pointField& points)
+{
+    // Compute an estimate of the centre as the average of the points
+    point pAvg = Zero;
+    forAll(f, fp)
+    {
+        pAvg += points[f[fp]];
+    }
+    pAvg /= f.size();
+
+    // Compute the face area normal and unit normal
+    vector sumA = Zero;
+    forAll(f, fp)
+    {
+        const point& p = points[f[fp]];
+        const point& pNext = points[f.nextLabel(fp)];
+
+        const vector a = (pNext - p) ^ (pAvg - p);
+        sumA += a;
+    }
+    const vector sumAHat = normalised(sumA);
+
+    // Compute the area-weighted sum of the triangle centres
+    scalar sumAn = 0;
+    vector sumAnc = Zero;
+    forAll(f, fp)
+    {
+        const point& p = points[f[fp]];
+        const point& pNext = points[f.nextLabel(fp)];
+
+        const vector a = (pNext - p) ^ (pAvg - p);
+        const vector c = p + pNext + pAvg;
+
+        const scalar an = a & sumAHat;
+
+        sumAn += an;
+        sumAnc += an * c;
+    }
+    point fc = (1.0 / 3.0) * sumAnc / sumAn;
+
+    // Calculate the sum of the magnitude of areas and compare to magnitude of sum of areas
+    scalar summA = 0.0;
+    vector sumN = Zero;
+
+    forAll(f, fp)
+    {
+        const point& thisPoint = points[f[fp]];
+        const point& nextPoint = points[f.nextLabel(fp)];
+
+        // Triangle around fc
+        const vector n = 0.5 * ((nextPoint - thisPoint) ^ (fc - thisPoint));
+
+        summA += mag(n);
+        sumN += n;
+    }
+
+    scalar magArea = mag(sumN);
+    scalar faceFlatness = magArea / summA;
+
+    return faceFlatness;
+}
+
 
 //---------------------------------------------------------------
 
@@ -1147,151 +1209,47 @@ for (label timeI = 1; timeI < Times.size(); ++timeI)
     {
         const faceList& pFaces = mesh.faces();
         const pointField& pPts = mesh.points();
+        const vectorField& pC = mesh.cellCentres();
+        const labelList& pOwner = mesh.faceOwner();
+
+        scalar minQ(1.0);
 
         forAll(faceIndices, facei)
         {
 
-            face f = pFaces[faceIndices[facei]];
-
-            // Compute an estimate of the centre as the average of the points
-            point pAvg = Zero;
-
-            forAll(f, fp)
-            {
-                pAvg += pPts[f[fp]];
-            }
-            pAvg /= f.size();
-
-            // Compute the face area normal and unit normal by summing up the
-            // normals of the triangles formed by connecting each edge to the
-            // point average.
-            vector sumA = Zero;
-
-            forAll(f, fp)
-            {
-                const point& p = pPts[f[fp]];
-                const point& pNext = pPts[f.nextLabel(fp)];
-
-                const vector a = (pNext - p)^(pAvg - p);
-
-                sumA += a;
-            }
-            const vector sumAHat = normalised(sumA);
-
-            // Compute the area-weighted sum of the triangle centres. Note use
-            // the triangle area projected in the direction of the face normal
-            // as the weight, *not* the triangle area magnitude. Only the
-            // former makes the calculation independent of the initial estimate.
-            scalar sumAn = 0;
-            vector sumAnc = Zero;
-            forAll(f, fp)
-            {
-                const point& p = pPts[f[fp]];
-                const point& pNext = pPts[f.nextLabel(fp)];
-
-                const vector a = (pNext - p)^(pAvg - p);
-                const vector c = p + pNext + pAvg;
-
-                const scalar an = a & sumAHat;
-
-                sumAn += an;
-                sumAnc += an*c;
-            }
-
-            point fc = (1.0/3.0)*sumAnc/sumAn;
-
-            // Calculate the sum of magnitude of areas and compare to magnitude
-            // of sum of areas.
-
-            scalar summA = 0.0;
-            vector sumN(0.0,0.0,0.0);
-
-            forAll(f, fp)
-            {
-                const point& thisPoint = pPts[f[fp]];
-                const point& nextPoint = pPts[f.nextLabel(fp)];
-
-                // Triangle around fc.
-                const vector n = 0.5*((nextPoint - thisPoint)^(fc - thisPoint));
-            
-                summA += mag(n);
-                sumN += n;
-            }
-
-            scalar magArea = mag(sumN);
-            scalar faceFlatness = magArea/(summA);  
-            if ( faceFlatness < 0.98 )
+            const face& f = pFaces[faceIndices[facei]];
+            scalar flatness = calculateFlatness(f, pPts);
+ 
+            if ( flatness < 0.98 )
             {   
                 Sout << "Proc" << Pstream::myProcNo() << " face " << facei 
-                     << " centre " << fc << " flatness " << faceFlatness << endl; 
+                     << " flatness " << flatness << endl; 
             }               
-        }
-    }
-    /*
 
-    const vectorField& fCtrs = mesh.faceCentres();
-    const vectorField& pC = mesh.cellCentres();
-    const labelList& pOwner = mesh.faceOwner();
-    const vectorField& fAreas = mesh.faceAreas();
+            label oCI = pOwner[faceIndices[facei]];
 
-    scalar minQ(1.0);
-    // Loop through each midified reference face 
-    forAll(faceIndices, facei)
-    {
+            point oCc = pC[oCI];
 
-        face f = pFaces[faceIndices[facei]];
+            minQ = 1.0;
 
-        label oCI = pOwner[faceIndices[facei]];
-
-        point oCc = pC[oCI];
-
-        minQ = 1.0;
-
-        forAll(f, faceBasePtI)
-        {
-            minQ = minQuality(mesh, oCc, faceIndices[facei], true, faceBasePtI);
-        }
-        
-        if (minQ < 1e-15)
-        {
-            Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " minQ " << minQ << endl; 
-            forAll(f,ip)
+            forAll(f, faceBasePtI)
             {
-                Sout << ip << " coord " << pPts[f[ip]] << endl;
+                minQ = minQuality(mesh, oCc, faceIndices[facei], true, faceBasePtI);
             }
-            Sout << " oCc " << oCc << endl;
+        
+            if (minQ < 1e-15)
+            {
+                Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " minQ " << minQ << endl; 
+                forAll(f,ip)
+                {
+                    Sout << ip << " coord " << pPts[f[ip]] << endl;
+                }
+                Sout << " oCc " << oCc << endl;
+            }
         }
-
-        const point& fc = fCtrs[faceIndices[facei]];
-
-        // Calculate the sum of magnitude of areas and compare to magnitude
-        // of sum of areas.
-
-        scalar sumA = 0.0;
-        vector sumN(0.0,0.0,0.0);
-
-        forAll(f, fp)
-        {
-            const point& thisPoint = pPts[f[fp]];
-            const point& nextPoint = pPts[f.nextLabel(fp)];
-
-            // Triangle around fc.
-            const vector n = 0.5*((nextPoint - thisPoint)^(fc - thisPoint));
-            
-            sumA += mag(n);
-            sumN += n;
-        }
-
-        scalar magArea = mag(sumN);
-        scalar faceFlatness = magArea/(sumA + rootVSmall);  
-        if ( faceFlatness < 0.98 )
-        {     
-            Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " flatness " << faceFlatness << endl; 
-        }               
     }
-    */
-    
 
+   
     Info << "Writing new mesh" << endl;
     mesh.write();
 
