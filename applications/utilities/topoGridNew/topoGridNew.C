@@ -44,7 +44,8 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// Function to compute the normal vector of a triangle formed by points p1, p2, p3
+// Function to compute the normal vector of a triangle formed by points 
+// p1, p2, p3
 vector computeNormal(const point& p1, const point& p2, const point& p3)
 {
     vector v1 = p2 - p1;  // Edge vector 1
@@ -69,7 +70,8 @@ vector computeNormal(const point& p1, const point& p2, const point& p3)
 }
 
 // Function to write a single triangle in binary format
-void writeBinaryTriangle(std::ofstream& stlFile, const vector& normal, const point& p1, const point& p2, const point& p3)
+void writeBinaryTriangle(std::ofstream& stlFile, const vector& normal, 
+                         const point& p1, const point& p2, const point& p3)
 {
     // Write normal vector (12 bytes: 3 floats)
     float nx(normal.x());
@@ -110,12 +112,18 @@ void writeBinaryTriangle(std::ofstream& stlFile, const vector& normal, const poi
 
 
 // Function to write STL surface in binary format
-void writeBinarySTL(const word& stlFileName, const RectangularMatrix<scalar>& elevation, scalar xOffset, scalar yOffset, scalar cellSize)
+void writeBinarySTL(const word& stlFileName, 
+                    const RectangularMatrix<scalar>& elevation, 
+                    scalar xOffset, 
+                    scalar yOffset, 
+                    scalar cellSize)
 {
     std::ofstream stlFile(stlFileName.c_str(), std::ios::binary);
     if (!stlFile)
     {
-        FatalErrorInFunction << "Cannot open STL file " << stlFileName << " for writing" << exit(FatalError);
+        FatalErrorInFunction << "Cannot open STL file " 
+                             << stlFileName << " for writing" 
+                             << exit(FatalError);
     }
 
     // Write 80-byte header (just fill with 0 or any message)
@@ -166,7 +174,11 @@ void writeBinarySTL(const word& stlFileName, const RectangularMatrix<scalar>& el
 }
 
 // Function to write STL surface from the elevation grid
-void writeSTL(const word& stlFileName, const RectangularMatrix<scalar>& elevation, scalar xOffset, scalar yOffset, scalar cellSize)
+void writeSTL(const word& stlFileName, 
+              const RectangularMatrix<scalar>& elevation, 
+              scalar xOffset, 
+              scalar yOffset, 
+              scalar cellSize)
 {
     std::ofstream stlFile(stlFileName.c_str());
     if (!stlFile)
@@ -283,6 +295,7 @@ scalar minQuality
 }
 
 
+// Function to compute the face flatness
 scalar calculateFlatness(const face& f, const pointField& points)
 {
     // Compute an estimate of the centre as the average of the points
@@ -323,7 +336,8 @@ scalar calculateFlatness(const face& f, const pointField& points)
     }
     point fc = (1.0 / 3.0) * sumAnc / sumAn;
 
-    // Calculate the sum of the magnitude of areas and compare to magnitude of sum of areas
+    // Calculate the sum of the magnitude of areas and compare to magnitude 
+    // of sum of areas
     scalar summA = 0.0;
     vector sumN = Zero;
 
@@ -345,9 +359,8 @@ scalar calculateFlatness(const face& f, const pointField& points)
     return faceFlatness;
 }
 
-
-//---------------------------------------------------------------
-
+// Function to compute the interpolation of dz at any mesh point, based on the
+// inverse of the distance
 scalar inverseDistanceInterpolationDz(
     const scalar& Ldef, 
     const scalar& alpha, 
@@ -397,7 +410,8 @@ scalar inverseDistanceInterpolationDz(
     return interpolatedDz;
 }
 
-
+// Function to compute the interpolation of dz at z=0 points, based on the
+// inverse of the distance
 Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(
     const point& internalPoint,
     const scalarField& boundaryPointsX,
@@ -445,7 +459,7 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(
         for (label i = 0; i < n; ++i)
         {
             scalar distance = distances[i];
-            scalar weight = 1.0 / distance;
+            scalar weight = minValue / distance;
 
             // Neglect points outside the relative radius
             if (distance > radiusThreshold)
@@ -463,7 +477,7 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(
     return Tuple2<scalar, scalar>(interpolatedDz, interpolatedArea);
 }
 
-// Function to calculate the average of a sub-block
+// Function to calculate the average of a sub-block 
 double calculateBlockAverage(
     const RectangularMatrix<double>& elevation, 
     label startRow, 
@@ -481,14 +495,17 @@ double calculateBlockAverage(
             ++count;
         }
     }
-
     return sum / count;
 }
 
-RectangularMatrix<double> subsampleMatrix(const RectangularMatrix<double>& elevation, int ncols, int nrows, label blockSize) {
-    // Original dimensions
-    
-
+// Function to subsample a 2D array (used to sub-sample the
+// elevation data and save the STL file)
+RectangularMatrix<double> subsampleMatrix(
+    const RectangularMatrix<double>& elevation, 
+    int ncols, 
+    int nrows, 
+    label blockSize) 
+{
     // New dimensions
     label newRows = nrows / blockSize;
     label newCols = ncols / blockSize;
@@ -508,17 +525,8 @@ RectangularMatrix<double> subsampleMatrix(const RectangularMatrix<double>& eleva
                 ncols);
         }
     }
-
     return subsampled;
 }
-
-
-template<typename T>
-T clamp(const T& value, const T& low, const T& high)
-{
-    return std::max(low, std::min(value, high));
-}
-
 
 //--------------------------------------------------------------
 
@@ -530,16 +538,16 @@ int main(int argc, char *argv[])
   
 // Read the dictionary file (topoGridDict) from the "system" folder
 IOdictionary topoDict
-  (
-   IOobject
-   (
-    "topoGridDict",
-    runTime.system(),
-    mesh,
-    IOobject::MUST_READ,
-    IOobject::NO_WRITE
-   )
-  );
+(
+    IOobject
+    (
+        "topoGridDict",
+        runTime.system(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+);
 
 // Read the raster file name from the dictionary
 const word rasterFile = topoDict.lookup<word>("rasterFile");
@@ -547,13 +555,29 @@ const word rasterFile = topoDict.lookup<word>("rasterFile");
 // Read the vent center coordinates from the dictionary
 const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
 const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
+
+// Read the expansion factor for the top of the mesh
 const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
-const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
-const scalar interpRelRadius = topoDict.lookupOrDefault<scalar>("interpRelRadius",4.0);
+
+// Read the expansion shape parameter for the expansion of the top of the mesh
 const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
+
+// Read the parameter for the starting elevation of the expansion
+const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
+
+// Read the relative distance for the smoothing kernel of the topography
+const scalar interpRelRadius = topoDict.lookupOrDefault<scalar>("interpRelRadius",4.0);
+
+// Read the switch to save the subsampled topo as STL
 const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
+
+// Read the switch to save the subsampled topo as binary STL
 const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
+
+// Read the swtich to perform some mesh quality check at the end 
 const Switch checkMesh = topoDict.lookupOrDefault<Switch>("checkMesh", false);
+
+// Read the swtich to raise the top of the mesh by the max elev of the topo
 const Switch raiseTop = topoDict.lookupOrDefault<Switch>("raiseTop", true);
 
 // Output the file name to the terminal for verification
@@ -652,599 +676,579 @@ if (saveSTL)
     
 file.close();
 
-// Get times list
-instantList Times = runTime.times();
+scalar xMin = min(mesh.Cf().component(0)).value();
+scalar xMax = max(mesh.Cf().component(0)).value();
 
-// skip "constant" time
-for (label timeI = 1; timeI < Times.size(); ++timeI)
-{
-    runTime.setTime(Times[timeI], timeI);
+reduce(xMin, minOp<scalar>());
+reduce(xMax, maxOp<scalar>());
 
-    Info<< "Time = " << runTime.userTimeName() << endl;
+Info << "xMin = " << xMin << endl;
+Info << "xMax = " << xMax << endl;
 
-    scalar xMin = min(mesh.Cf().component(0)).value();
-    scalar xMax = max(mesh.Cf().component(0)).value();
+scalar yMin = min(mesh.Cf().component(1)).value();
+scalar yMax = max(mesh.Cf().component(1)).value();
 
-    reduce(xMin, minOp<scalar>());
-    reduce(xMax, maxOp<scalar>());
+reduce(yMin, minOp<scalar>());
+reduce(yMax, maxOp<scalar>());
 
-    Info << "xMin = " << xMin << endl;
-    Info << "xMax = " << xMax << endl;
+Info << "yMin = " << yMin << endl;
+Info << "yMax = " << yMax << endl;
 
-    scalar yMin = min(mesh.Cf().component(1)).value();
-    scalar yMax = max(mesh.Cf().component(1)).value();
+scalar zMin = min(mesh.Cf().component(2)).value();
+scalar zMax = max(mesh.Cf().component(2)).value();
 
-    reduce(yMin, minOp<scalar>());
-    reduce(yMax, maxOp<scalar>());
-
-    Info << "yMin = " << yMin << endl;
-    Info << "yMax = " << yMax << endl;
-
-    scalar zMin = min(mesh.Cf().component(2)).value();
-    scalar zMax = max(mesh.Cf().component(2)).value();
-
-    reduce(zMin, minOp<scalar>());
-    reduce(zMax, maxOp<scalar>());
+reduce(zMin, minOp<scalar>());
+reduce(zMax, maxOp<scalar>());
   
-    Info << "zMin = " << zMin << endl;
-    Info << "zMax = " << zMax << endl;
+Info << "zMin = " << zMin << endl;
+Info << "zMax = " << zMax << endl;
  
-    // Approximation of the maximum distance of any mesh node 
-    // from the mesh centroid (Sen et al, 2017) 
-    scalar Ldef(0.5*std::sqrt( sqr(xMax-xMin) + sqr(yMax-yMin) + sqr(zMax-zMin) ));
+// Approximation of the maximum distance of any mesh node 
+// from the mesh centroid (Sen et al, 2017) 
+scalar Ldef(0.5*std::sqrt( sqr(xMax-xMin) + sqr(yMax-yMin) + sqr(zMax-zMin) ));
 
-    Info << "Ldef = " << Ldef << endl << endl;
+Info << "Ldef = " << Ldef << endl << endl;
    
-    scalar z2Rel(0.0);
-    scalar zNew(0.0);
+scalar z2Rel(0.0);
+scalar zNew(0.0);
 
-    const vectorField& faceAreas = mesh.faceAreas();
-    const vectorField& faceCentres = mesh.faceCentres();
-    const scalarField magFaceAreas(mag(faceAreas));
-    const vectorField faceNormals = mesh.faceAreas()/mag(faceAreas);
-    const faceList& faces = mesh.faces();
+const vectorField& faceAreas = mesh.faceAreas();
+const vectorField& faceCentres = mesh.faceCentres();
+const scalarField magFaceAreas(mag(faceAreas));
+const vectorField faceNormals = mesh.faceAreas()/mag(faceAreas);
+const faceList& faces = mesh.faces();
     
-    // List of indexes of faces with z=0
-    labelList faceIndices;
+// List of indexes of faces with z=0
+labelList faceIndices;
 
-    // Pupolate list of faces at z=0, by iterating over all the mesh faces
-    forAll(faces, faceI)
+// Pupolate list of faces at z=0, by iterating over all the mesh faces
+forAll(faces, faceI)
+{
+    // Check z of face
+    if (mag(faceCentres[faceI].z()) < 1.e-3) // Usa SMALL per tolleranza numerica
     {
-        // Check z of face
-        if (mag(faceCentres[faceI].z()) < 1.e-3) // Usa SMALL per tolleranza numerica
-        {
-            // Add the face index
-            faceIndices.append(faceI);
-        }
+        // Add the face index
+        faceIndices.append(faceI);
     }
+}
 
-    Sout << "Proc" << Pstream::myProcNo() << " z=0 faces " << faceIndices.size() << endl;
+Sout << "Proc" << Pstream::myProcNo() << " z=0 faces " << faceIndices.size() << endl;
 
-    // Create fieds for face coords, areas and dz
-    scalarField bottomCentresX(faceIndices.size());
-    scalarField bottomCentresY(faceIndices.size());
-    scalarField bottomCentresZ(faceIndices.size());
-    scalarField bottomAreas(faceIndices.size());
-    scalarField dzBottom(faceIndices.size());
+// Create fieds for face centres coords, areas and dz
+scalarField bottomCentresX(faceIndices.size());
+scalarField bottomCentresY(faceIndices.size());
+scalarField bottomCentresZ(faceIndices.size());
+scalarField bottomAreas(faceIndices.size());
+scalarField dzBottom(faceIndices.size());
 
-    // Loop through each face in the list and compute dz with bilinear interpolation
-    forAll(faceIndices, facei)
-    {
-        point pCentre = faceCentres[faceIndices[facei]];
+// Loop through each face in the list and compute dz with bilinear interpolation
+forAll(faceIndices, facei)
+{
+    point pCentre = faceCentres[faceIndices[facei]];
 
-        // Get x, y coordinates of the pointi
-        scalar x = pCentre.x(); 
-        scalar y = pCentre.y();
+    // Get x, y coordinates of the pointi
+    scalar x = pCentre.x(); 
+    scalar y = pCentre.y();
         
-        // Calculate row and column indices in the elevation matrix
-        int colIndex = (x - xllcorner) / cellsize;
-        int rowIndex = (y - yllcorner) / cellsize;
+    // Calculate row and column indices in the elevation matrix
+    int colIndex = (x - xllcorner) / cellsize;
+    int rowIndex = (y - yllcorner) / cellsize;
 
-        // Interpolate elevation value
-        if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
-        {
-            // Bilinear interpolation
-            scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
-            scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
-
-            scalar v00 = elevation(rowIndex, colIndex);
-            scalar v01 = elevation(rowIndex, colIndex + 1);
-            scalar v10 = elevation(rowIndex + 1, colIndex);
-            scalar v11 = elevation(rowIndex + 1, colIndex + 1);
-
-            scalar zInterp = 
-                v00 * (1 - xLerp) * (1 - yLerp) +
-                v01 * xLerp * (1 - yLerp) +
-                v10 * (1 - xLerp) * yLerp +
-                v11 * xLerp * yLerp;
-
-            bottomCentresX[facei] = faceCentres[faceIndices[facei]].x();
-            bottomCentresY[facei] = faceCentres[faceIndices[facei]].y();
-            bottomCentresZ[facei] = faceCentres[faceIndices[facei]].z();
-            bottomAreas[facei] =  magFaceAreas[faceIndices[facei]];
-            dzBottom[facei] = zInterp-faceCentres[faceIndices[facei]].z();
-            
-
-        }
-        else
-        {
-            FatalErrorInFunction << "Check asc size" << exit(FatalError);
-        }
-
-    }
-
-    // Create points from coords to save in an external file
-    pointField points(bottomCentresX.size());
-    forAll(points, i)
+    // Interpolate elevation value
+    if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
     {
-        points[i] = vector(bottomCentresX[i], bottomCentresY[i], dzBottom[i]);
-    }
-  
-    // First of all create list with nproc fields
-    List<scalarField> CentresX(Pstream::nProcs());
-    CentresX[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+        // Bilinear interpolation
+        scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
+        scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
 
-    List<scalarField> CentresY(Pstream::nProcs());
-    CentresY[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+        scalar v00 = elevation(rowIndex, colIndex);
+        scalar v01 = elevation(rowIndex, colIndex + 1);
+        scalar v10 = elevation(rowIndex + 1, colIndex);
+        scalar v11 = elevation(rowIndex + 1, colIndex + 1);
 
-    List<scalarField> Dz(Pstream::nProcs());
-    Dz[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+        scalar zInterp = 
+            v00 * (1 - xLerp) * (1 - yLerp) +
+            v01 * xLerp * (1 - yLerp) +
+            v10 * (1 - xLerp) * yLerp +
+            v11 * xLerp * yLerp;
 
-    List<scalarField> Areas(Pstream::nProcs());
-    Areas[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
-
-    // Each processor populate its field in the list of fields
-    for (label i = 0; i < bottomCentresX.size(); ++i)
-    {
-        CentresX[Pstream::myProcNo()][i] = bottomCentresX[i];
-        CentresY[Pstream::myProcNo()][i] = bottomCentresY[i];
-        Areas[Pstream::myProcNo()][i] = bottomAreas[i];
-        Dz[Pstream::myProcNo()][i] = dzBottom[i];
-    }
-
-    // Use gather and scatter to have the full lists for all the processors
-    
-    Pstream::gatherList<scalarField>(CentresX);
-    Pstream::scatterList<scalarField>(CentresX);
-
-    Pstream::gatherList<scalarField>(CentresY);
-    Pstream::scatterList<scalarField>(CentresY);
-
-    Pstream::gatherList<scalarField>(Areas);
-    Pstream::scatterList<scalarField>(Areas);
-
-    Pstream::gatherList<scalarField>(Dz);
-    Pstream::scatterList<scalarField>(Dz);
-
-    // Create the global fields
-    scalarField globalBottomCentresX;
-    scalarField globalBottomCentresY;
-    scalarField globalBottomCentresDz;
-    scalarField globalBottomCentresAreas;
-    
-    for (label i = 0; i < Pstream::nProcs(); ++i)
-    {
-        globalBottomCentresX.append(CentresX[i]);
-        globalBottomCentresY.append(CentresY[i]);
-        globalBottomCentresDz.append(Dz[i]);
-        globalBottomCentresAreas.append(Areas[i]);
-    }
-
-    
-
-    double maxTopo;
-    if (raiseTop)
-    {
-        maxTopo = max(globalBottomCentresDz);
+        bottomCentresX[facei] = faceCentres[faceIndices[facei]].x();
+        bottomCentresY[facei] = faceCentres[faceIndices[facei]].y();
+        bottomCentresZ[facei] = faceCentres[faceIndices[facei]].z();
+        bottomAreas[facei] =  magFaceAreas[faceIndices[facei]];
+        dzBottom[facei] = zInterp-faceCentres[faceIndices[facei]].z();            
     }
     else
     {
-        maxTopo = 0.0;
-    }
-    // double minTopo(max(elevation));
-
-    scalar zVert(maxTopo + dzVert);
-
-    Info << "z=0 faces " << globalBottomCentresAreas.size() << endl;
-
-    pointField zeroPoints(mesh.points());
-    pointField pDeform(0.0*zeroPoints);
-
-    const globalIndex globalPoints(mesh.nPoints());
-
-    // Local number of points and cells
-    label localNumPoints = mesh.points().size();
-
-    // Output the global number of points and cells
-    Info << "Local number of points: " << localNumPoints << endl;
-    
-    reduce(localNumPoints, sumOp<scalar>());  // global sum   
-    
-    label globalNumPoints(localNumPoints);
-    
-    // Output the global number of points and cells
-    Info << "Global number of points: " << globalNumPoints << endl << endl;
-    
-
-    // Lists for the mesh points at z=0 and for the area and deformation at these points
-    // These lists are created for each processor
-    scalarList pX;
-    scalarList pY;
-    scalarList pZ;
-    scalarList pArea;
-    scalarList pDz;
-    labelList  localIdx;
-
-    point pEval(zeroPoints[0]);
-    
-    // Loop over the points with z=0 to compute the deformation from the face centers
-    forAll(pDeform,pointi)
-    {
-        pEval = mesh.points()[pointi];
-
-        if ( mag(pEval.z()) < 1e-3 )
-        {    
-            Tuple2<scalar, scalar> result;
-
-            result = inverseDistanceInterpolationDzBottom(pEval, globalBottomCentresX, 
-                     globalBottomCentresY, globalBottomCentresAreas, 
-                     globalBottomCentresDz, interpRelRadius);
-
-            scalar interpDz = result.first();
-            scalar interpArea = result.second();   
-            
-            pX.append( pEval.x() );
-            pY.append( pEval.y() );
-            pZ.append( 0.0 );
-            pArea.append( interpArea );
-            pDz.append( interpDz );
-            localIdx.append( pointi );
-        }
-    } 
-
-    // Create list of labels in the original global mesh
-    labelList globalIdx(localIdx.size());
-    forAll(localIdx, pointi)
-    {
-        globalIdx[pointi] = globalPoints.toGlobal(pointi);
+        FatalErrorInFunction << "Check asc size" << exit(FatalError);
     }
 
-    syncTools::syncPointList
-    (
-        mesh,
-        localIdx,
-        globalIdx,
-        minEqOp<label>(),
-        labelMax
-    );
+}
 
-    Sout << "Proc" << Pstream::myProcNo() << " z=0 points " << pArea.size() << endl;
+// Create points from coords to save in an external file
+pointField points(bottomCentresX.size());
+forAll(points, i)
+{
+    points[i] = vector(bottomCentresX[i], bottomCentresY[i], dzBottom[i]);
+}
+  
+// Create list with nproc fields
+List<scalarField> CentresX(Pstream::nProcs());
+CentresX[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
 
-    // Local number of points and cells
-    label globalZ0Points = pArea.size();
+List<scalarField> CentresY(Pstream::nProcs());
+CentresY[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+
+List<scalarField> Dz(Pstream::nProcs());
+Dz[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+
+List<scalarField> Areas(Pstream::nProcs());
+Areas[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+
+// Each processor populate its field in the list of fields
+for (label i = 0; i < bottomCentresX.size(); ++i)
+{
+    CentresX[Pstream::myProcNo()][i] = bottomCentresX[i];
+    CentresY[Pstream::myProcNo()][i] = bottomCentresY[i];
+    Areas[Pstream::myProcNo()][i] = bottomAreas[i];
+    Dz[Pstream::myProcNo()][i] = dzBottom[i];
+}
+
+// Use gather and scatter to have the full lists for all the processors    
+Pstream::gatherList<scalarField>(CentresX);
+Pstream::scatterList<scalarField>(CentresX);
+
+Pstream::gatherList<scalarField>(CentresY);
+Pstream::scatterList<scalarField>(CentresY);
+
+Pstream::gatherList<scalarField>(Areas);
+Pstream::scatterList<scalarField>(Areas);
+
+Pstream::gatherList<scalarField>(Dz);
+Pstream::scatterList<scalarField>(Dz);
+
+// Create the global fields
+scalarField globalBottomCentresX;
+scalarField globalBottomCentresY;
+scalarField globalBottomCentresDz;
+scalarField globalBottomCentresAreas;
     
-    reduce(globalZ0Points, sumOp<scalar>());  // global sum   
-
-    Info << "Total z=0 points " << globalZ0Points << endl;
-      
-    // Start the computation of mesh deformation for top face centres  
-    word patchName = "top";  
-
-    // Find the ID# associated with the patchName by iterating through boundaryMesh
-    label patchID = -1;
-    forAll(mesh.boundaryMesh(), patchi)
-      {
-        if (mesh.boundaryMesh()[patchi].name() == patchName)
-          {
-            patchID = patchi;
-            break;
-          }
-      }
-
-    if (patchID == -1)
-      {
-        FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
-      }
-
-    // Access the patch
-    const fvPatch& patchTop = mesh.boundary()[patchID];
-
-    Sout << "Proc" << Pstream::myProcNo() << " zTop faces/points " << patchTop.size() << endl;
-
-    // Local number of faces/points 
-    label globalZtopPoints = patchTop.size();
-    
-    // Global sum  
-    reduce(globalZtopPoints, sumOp<scalar>());  
-
-    Info << "Total z=zTop faces/points " << globalZtopPoints << endl;
-
-    label nGlobalPoints(globalZ0Points+globalZtopPoints); 
-
-    Info << "Total interpolation points (including duplicated points) " << nGlobalPoints << endl;
-
-    // Local lists for top interpolation points (centres of top faces)
-    scalarField topCentresX(patchTop.size());
-    scalarField topCentresY(patchTop.size());
-    scalarField topCentresZ(patchTop.size());
-    scalarField topAreas(patchTop.size());
-    scalarField dzTop(patchTop.size());
-    labelField globalIdxTop(patchTop.size());
-
-    forAll(patchTop, facei)
-    {
-        topCentresX[facei] = faceCentres[patchTop.start() + facei].x();
-        topCentresY[facei] = faceCentres[patchTop.start() + facei].y();
-        topCentresZ[facei] = faceCentres[patchTop.start() + facei].z();
-        topAreas[facei] =  magFaceAreas[patchTop.start() + facei];
-        dzTop[facei] = maxTopo; 
-        globalIdxTop[facei] = -1;       
-    }
-
-    // Create lists for sharing processors values for
-    // both the z=0 and z=zMax interpolation points
-    
-    List<scalarField> concatenatedPointsX(Pstream::nProcs());
-    concatenatedPointsX[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
-
-    List<scalarField> concatenatedPointsY(Pstream::nProcs());
-    concatenatedPointsY[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
-
-    List<scalarField> concatenatedPointsZ(Pstream::nProcs());
-    concatenatedPointsZ[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
-
-    List<scalarField> concatenatedDz(Pstream::nProcs());
-    concatenatedDz[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
-
-    List<scalarField> concatenatedAreas(Pstream::nProcs());
-    concatenatedAreas[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
-
-    List<labelField> concatenatedGlobalIndex(Pstream::nProcs());
-    concatenatedGlobalIndex[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
-
-    // Copy the z=0 interpolation points into the new field
-    for (label i = 0; i < pDz.size(); ++i)
-    {
-        concatenatedPointsX[Pstream::myProcNo()][i] = pX[i];
-        concatenatedPointsY[Pstream::myProcNo()][i] = pY[i];
-        concatenatedPointsZ[Pstream::myProcNo()][i] = pZ[i];
-        concatenatedAreas[Pstream::myProcNo()][i] = pArea[i];
-        concatenatedDz[Pstream::myProcNo()][i] = pDz[i];
-        concatenatedGlobalIndex[Pstream::myProcNo()][i] = globalIdx[i];
-    }
-
-    // Copy the z=zMax interpolation points into the new field, 
-    // starting after the end of the first
-    for (label i = 0; i < topCentresX.size(); ++i)
-    {
-        concatenatedPointsX[Pstream::myProcNo()][i + pX.size()] = topCentresX[i];
-        concatenatedPointsY[Pstream::myProcNo()][i + pY.size()] = topCentresY[i];
-        concatenatedPointsZ[Pstream::myProcNo()][i + pZ.size()] = topCentresZ[i];
-        concatenatedAreas[Pstream::myProcNo()][i + pArea.size()] = topAreas[i];
-        concatenatedDz[Pstream::myProcNo()][i + pDz.size()] = dzTop[i];
-        concatenatedGlobalIndex[Pstream::myProcNo()][i + pDz.size()] = globalIdxTop[i];
-    }
-
-    // Gather values from other processors
-    Pstream::gatherList<scalarField>(concatenatedPointsX);
-    Pstream::gatherList<scalarField>(concatenatedPointsY);
-    Pstream::gatherList<scalarField>(concatenatedPointsZ);
-    Pstream::gatherList<scalarField>(concatenatedAreas);
-    Pstream::gatherList<scalarField>(concatenatedDz);
-    Pstream::gatherList<labelField>(concatenatedGlobalIndex);
-
-    // Scatter values from other processors
-    Pstream::scatterList<scalarField>(concatenatedPointsX);
-    Pstream::scatterList<scalarField>(concatenatedPointsY);
-    Pstream::scatterList<scalarField>(concatenatedPointsZ);
-    Pstream::scatterList<scalarField>(concatenatedAreas);
-    Pstream::scatterList<scalarField>(concatenatedDz);
-    Pstream::scatterList<labelField>(concatenatedGlobalIndex);
-
-    // List of interpolation points merged from all the processors
-    // containing the z=0 mesh points and the z=zMax face centres
-    scalarField globalPointsX(nGlobalPoints);
-    scalarField globalPointsY(nGlobalPoints);
-    scalarField globalPointsZ(nGlobalPoints);
-    scalarField globalDz(nGlobalPoints);
-    scalarField globalAreas(nGlobalPoints);
-    
-    // Bool for points alreay added    
-    boolList addedPoint(globalNumPoints, false);
-    
-    label totPoints(0);
-    
-    // Loop over processors to create global list without duplicated points
-    for (label i = 0; i < Pstream::nProcs(); ++i)
-    {
-        Info << "Merging proc " << i << endl;
-        forAll(concatenatedDz[i],pi)
-        {
-            // The points belonging to more than one processor
-            // should not be added twice
-            // "accept" becomes false when the point already exists
-            label globalI = concatenatedGlobalIndex[i][pi];            
-
-            bool accept(true);
-            
-            if ( globalI > 0)
-            {
-                if ( addedPoint[globalI] )
-                {
-                    accept = false;
-                }
-                else
-                {
-                    addedPoint[globalI] = true;
-                }
-            }
-            
-            if (accept)
-            {                
-                globalPointsX[totPoints] = concatenatedPointsX[i][pi];
-                globalPointsY[totPoints] = concatenatedPointsY[i][pi];
-                globalPointsZ[totPoints] = concatenatedPointsZ[i][pi];
-                globalDz[totPoints] = concatenatedDz[i][pi];
-                globalAreas[totPoints] = concatenatedAreas[i][pi];
-                totPoints++;
-            }            
-        }
-    }
-    
-    // Reset the size of the field 
-    globalPointsX.setSize(totPoints);
-    globalPointsY.setSize(totPoints);
-    globalPointsZ.setSize(totPoints);
-    globalDz.setSize(totPoints);
-    globalAreas.setSize(totPoints);
-    
-    Info << "Global points for deformation " << totPoints << endl;
-
-    // Compute the deformation parameter alpha 
-    // as in Eq.5 from Luke et al. 2012
-    scalar gamma = 5.0;
-    scalarField a_n(globalAreas / sum(globalAreas));
-    scalar dzMean(sum(a_n*globalDz));
-    scalar alphaAll = gamma / Ldef * max( mag( globalDz - dzMean ) );
-
-    Info << "alpha " << alphaAll << endl;
-
-    scalar interpDz(0.0);
-
-    const label totalPoints = mesh.points().size();
-    label maxTotalPoints = totalPoints;
-    reduce(maxTotalPoints, maxOp<label>());
-
-    label localCount = 0;  // Count of processed points by this processor
-    // Loop over all points in the mesh to interpolate vertical deformation
-    scalar nextPctg(1.0);
-    scalar percentage(0.0);
-    
-    forAll(pDeform,pointi)
-    {                
-        localCount++;      
-        percentage = 100.0 * static_cast<scalar>(localCount) / totalPoints;
-        
-        // The percentage is computed with respect to the maximum number 
-        // of points among all the processors
-        scalar GlobalPercentage = 100.0 * static_cast<scalar>(localCount) / maxTotalPoints;
-
-        if ( percentage >= 100.0 )
-        {
-            Sout << "Proc" << Pstream::myProcNo() << " deformation completed" << endl; 
-        }
-
-        if ( GlobalPercentage >= nextPctg )
-        {
-            Info << "Progress: " << nextPctg << "% completed." << endl;
-            nextPctg += 1.0;            
-        }
-          
-        pEval = mesh.points()[pointi];
-
-        if ( mag(pEval.z()-zMax) < 1.e-3 )
-        {
-            interpDz = maxTopo;  
-        } 
-        else
-        {
-            if ( pEval.z() < 1.e-3 )
-            {
-                // For points on or below the topography consider only (x,y)
-                pEval.z() = 0.0;
-            }    
-
-            // Interpolation based on full 3D weighted inverse distance 
-            interpDz = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, globalPointsX, 
-                                globalPointsY, globalPointsZ, globalDz, globalAreas);        
-        }
- 
-        // New elevation of the deformed point, used to compute the enlargement
-        zNew = mesh.points()[pointi].z() + interpDz;
-
-        // Compute coefficient for horizontal enlargement                
-        if (dzVert > 0)
-        {
-            // Enlarge from a fixed height above the maximum
-            // topography and the top, thus from an horizontal
-            // plane to the top
-            z2Rel = max(0, (zNew - zVert) / (zMax + maxTopo - zVert));
-        }
-        else
-        {
-            // Enlarge from the topography to the top
-            z2Rel = (zNew - interpDz) / (zMax + maxTopo - interpDz);
-        }
-        z2Rel = std::pow(z2Rel,exp_shape);
-                
-        pDeform[pointi].x() = z2Rel*(expFactor-1.0)*pEval.x();
-        pDeform[pointi].y() = z2Rel*(expFactor-1.0)*pEval.y();
-        pDeform[pointi].z() = interpDz;
-    } 
-      
-    pointField newPoints(zeroPoints + pDeform);
-    mesh.setPoints(newPoints);
-
-    Sout << "Proc" << Pstream::myProcNo() << " mesh updated" << endl; 
-
-    if ( checkMesh )
-    {
-        const faceList& pFaces = mesh.faces();
-        const pointField& pPts = mesh.points();
-        const vectorField& pC = mesh.cellCentres();
-        const labelList& pOwner = mesh.faceOwner();
-
-        scalar minQ(1.0);
-
-        forAll(faceIndices, facei)
-        {
-
-            const face& f = pFaces[faceIndices[facei]];
-            scalar flatness = calculateFlatness(f, pPts);
- 
-            if ( flatness < 0.98 )
-            {   
-                Sout << "Proc" << Pstream::myProcNo() << " face " << facei 
-                     << " flatness " << flatness << endl; 
-            }               
-
-            label oCI = pOwner[faceIndices[facei]];
-
-            point oCc = pC[oCI];
-
-            minQ = 1.0;
-
-            forAll(f, faceBasePtI)
-            {
-                minQ = minQuality(mesh, oCc, faceIndices[facei], true, faceBasePtI);
-            }
-        
-            if (minQ < 1e-15)
-            {
-                Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " minQ " << minQ << endl; 
-                forAll(f,ip)
-                {
-                    Sout << ip << " coord " << pPts[f[ip]] << endl;
-                }
-                Sout << " oCc " << oCc << endl;
-            }
-        }
-    }
-
+for (label i = 0; i < Pstream::nProcs(); ++i)
+{
+    globalBottomCentresX.append(CentresX[i]);
+    globalBottomCentresY.append(CentresY[i]);
+    globalBottomCentresDz.append(Dz[i]);
+    globalBottomCentresAreas.append(Areas[i]);
+}
    
-    Info << "Writing new mesh" << endl;
-    mesh.write();
+double maxTopo;
+if (raiseTop)
+{
+    maxTopo = max(globalBottomCentresDz);
+}
+else
+{
+    maxTopo = 0.0;
+}
 
-    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-        << nl << endl;
+scalar zVert(maxTopo + dzVert);
 
-    Info<< "End\n" << endl;
+Info << "z=0 faces " << globalBottomCentresAreas.size() << endl;
 
-    } // closes skip constant time
+pointField zeroPoints(mesh.points());
+pointField pDeform(0.0*zeroPoints);
 
-    return 0;
-} // closes int main()
+const globalIndex globalPoints(mesh.nPoints());
+
+// Local number of points and cells
+label localNumPoints = mesh.points().size();
+
+// Output the global number of points and cells
+Info << "Local number of points: " << localNumPoints << endl;
+    
+reduce(localNumPoints, sumOp<scalar>());  // global sum   
+    
+label globalNumPoints(localNumPoints);
+    
+// Output the global number of points and cells
+Info << "Global number of points: " << globalNumPoints << endl << endl;
+    
+// Lists for the mesh points at z=0 and for the area and deformation at these points
+// These lists are created for each processor
+scalarList pX;
+scalarList pY;
+scalarList pZ;
+scalarList pArea;
+scalarList pDz;
+labelList  localIdx;
+
+point pEval(zeroPoints[0]);
+    
+// Loop over the points with z=0 to compute the deformation from the face centers
+forAll(pDeform,pointi)
+    {
+    pEval = mesh.points()[pointi];
+
+    if ( mag(pEval.z()) < 1e-3 )
+    {    
+        Tuple2<scalar, scalar> result;
+
+        result = inverseDistanceInterpolationDzBottom(pEval, globalBottomCentresX, 
+                 globalBottomCentresY, globalBottomCentresAreas, 
+                 globalBottomCentresDz, interpRelRadius);
+
+        scalar interpDz = result.first();
+        scalar interpArea = result.second();   
+            
+        pX.append( pEval.x() );
+        pY.append( pEval.y() );
+        pZ.append( 0.0 );
+        pArea.append( interpArea );
+        pDz.append( interpDz );
+        localIdx.append( pointi );
+    }
+} 
+
+// Create list of labels in the original global mesh
+labelList globalIdx(localIdx.size());
+forAll(localIdx, pointi)
+{
+    globalIdx[pointi] = globalPoints.toGlobal(pointi);
+}
+
+syncTools::syncPointList
+(
+    mesh,
+    localIdx,
+    globalIdx,
+    minEqOp<label>(),
+    labelMax
+);
+
+Sout << "Proc" << Pstream::myProcNo() << " z=0 points " << pArea.size() << endl;
+
+// Local number of points and cells
+label globalZ0Points = pArea.size();
+    
+reduce(globalZ0Points, sumOp<scalar>());  // global sum   
+
+Info << "Total z=0 points " << globalZ0Points << endl;
+      
+// Start the computation of mesh deformation for top face centres  
+word patchName = "top";  
+
+// Find the ID# associated with the patchName by iterating through boundaryMesh
+label patchID = -1;
+forAll(mesh.boundaryMesh(), patchi)
+{
+    if (mesh.boundaryMesh()[patchi].name() == patchName)
+    {
+        patchID = patchi;
+        break;
+    }
+}
+
+if (patchID == -1)
+{
+    FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
+}
+
+// Access the patch
+const fvPatch& patchTop = mesh.boundary()[patchID];
+
+Sout << "Proc" << Pstream::myProcNo() << " zTop faces/points " << patchTop.size() << endl;
+
+// Local number of faces/points 
+label globalZtopPoints = patchTop.size();
+    
+// Global sum  
+reduce(globalZtopPoints, sumOp<scalar>());  
+
+Info << "Total z=zTop faces/points " << globalZtopPoints << endl;
+
+label nGlobalPoints(globalZ0Points+globalZtopPoints); 
+
+Info << "Total interpolation points (including duplicated points) " << nGlobalPoints << endl;
+
+// Local lists for top interpolation points (centres of top faces)
+scalarField topCentresX(patchTop.size());
+scalarField topCentresY(patchTop.size());
+scalarField topCentresZ(patchTop.size());
+scalarField topAreas(patchTop.size());
+scalarField dzTop(patchTop.size());
+labelField globalIdxTop(patchTop.size());
+
+forAll(patchTop, facei)
+{
+    topCentresX[facei] = faceCentres[patchTop.start() + facei].x();
+    topCentresY[facei] = faceCentres[patchTop.start() + facei].y();
+    topCentresZ[facei] = faceCentres[patchTop.start() + facei].z();
+    topAreas[facei] =  magFaceAreas[patchTop.start() + facei];
+    dzTop[facei] = maxTopo; 
+    globalIdxTop[facei] = -1;       
+}
+
+// Create lists for sharing processors values for
+// both the z=0 and z=zMax interpolation points
+    
+List<scalarField> concatenatedPointsX(Pstream::nProcs());
+concatenatedPointsX[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+
+List<scalarField> concatenatedPointsY(Pstream::nProcs());
+concatenatedPointsY[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+
+List<scalarField> concatenatedPointsZ(Pstream::nProcs());
+concatenatedPointsZ[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+
+List<scalarField> concatenatedDz(Pstream::nProcs());
+concatenatedDz[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+
+List<scalarField> concatenatedAreas(Pstream::nProcs());
+concatenatedAreas[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+
+List<labelField> concatenatedGlobalIndex(Pstream::nProcs());
+concatenatedGlobalIndex[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+
+// Copy the z=0 interpolation points into the new field
+for (label i = 0; i < pDz.size(); ++i)
+{
+    concatenatedPointsX[Pstream::myProcNo()][i] = pX[i];
+    concatenatedPointsY[Pstream::myProcNo()][i] = pY[i];
+    concatenatedPointsZ[Pstream::myProcNo()][i] = pZ[i];
+    concatenatedAreas[Pstream::myProcNo()][i] = pArea[i];
+    concatenatedDz[Pstream::myProcNo()][i] = pDz[i];
+    concatenatedGlobalIndex[Pstream::myProcNo()][i] = globalIdx[i];
+}
+
+// Copy the z=zMax interpolation points into the new field, 
+// starting after the end of the first
+for (label i = 0; i < topCentresX.size(); ++i)
+{
+    concatenatedPointsX[Pstream::myProcNo()][i + pX.size()] = topCentresX[i];
+    concatenatedPointsY[Pstream::myProcNo()][i + pY.size()] = topCentresY[i];
+    concatenatedPointsZ[Pstream::myProcNo()][i + pZ.size()] = topCentresZ[i];
+    concatenatedAreas[Pstream::myProcNo()][i + pArea.size()] = topAreas[i];
+    concatenatedDz[Pstream::myProcNo()][i + pDz.size()] = dzTop[i];
+    concatenatedGlobalIndex[Pstream::myProcNo()][i + pDz.size()] = globalIdxTop[i];
+}
+
+// Gather values from other processors
+Pstream::gatherList<scalarField>(concatenatedPointsX);
+Pstream::gatherList<scalarField>(concatenatedPointsY);
+Pstream::gatherList<scalarField>(concatenatedPointsZ);
+Pstream::gatherList<scalarField>(concatenatedAreas);
+Pstream::gatherList<scalarField>(concatenatedDz);
+Pstream::gatherList<labelField>(concatenatedGlobalIndex);
+
+// Scatter values from other processors
+Pstream::scatterList<scalarField>(concatenatedPointsX);
+Pstream::scatterList<scalarField>(concatenatedPointsY);
+Pstream::scatterList<scalarField>(concatenatedPointsZ);
+Pstream::scatterList<scalarField>(concatenatedAreas);
+Pstream::scatterList<scalarField>(concatenatedDz);
+Pstream::scatterList<labelField>(concatenatedGlobalIndex);
+
+// List of interpolation points merged from all the processors
+// containing the z=0 mesh points and the z=zMax face centres
+scalarField globalPointsX(nGlobalPoints);
+scalarField globalPointsY(nGlobalPoints);
+scalarField globalPointsZ(nGlobalPoints);
+scalarField globalDz(nGlobalPoints);
+scalarField globalAreas(nGlobalPoints);
+    
+// Bool for points alreay added    
+boolList addedPoint(globalNumPoints, false);
+    
+label totPoints(0);
+    
+// Loop over processors to create global list without duplicated points
+for (label i = 0; i < Pstream::nProcs(); ++i)
+{
+    Info << "Merging proc " << i << endl;
+    forAll(concatenatedDz[i],pi)
+    {
+        // The points belonging to more than one processor
+        // should not be added twice
+        // "accept" becomes false when the point already exists
+        label globalI = concatenatedGlobalIndex[i][pi];            
+
+        bool accept(true);
+            
+        if ( globalI > 0)
+        {
+            if ( addedPoint[globalI] )
+            {
+                accept = false;
+            }
+            else
+            {
+                addedPoint[globalI] = true;
+            }
+        }
+            
+        if (accept)
+        {                
+            globalPointsX[totPoints] = concatenatedPointsX[i][pi];
+            globalPointsY[totPoints] = concatenatedPointsY[i][pi];
+            globalPointsZ[totPoints] = concatenatedPointsZ[i][pi];
+            globalDz[totPoints] = concatenatedDz[i][pi];
+            globalAreas[totPoints] = concatenatedAreas[i][pi];
+            totPoints++;
+        }            
+    }
+}
+    
+// Reset the size of the field 
+globalPointsX.setSize(totPoints);
+globalPointsY.setSize(totPoints);
+globalPointsZ.setSize(totPoints);
+globalDz.setSize(totPoints);
+globalAreas.setSize(totPoints);
+    
+Info << "Global points for deformation " << totPoints << endl;
+
+// Compute the deformation parameter alpha 
+// as in Eq.5 from Luke et al. 2012
+scalar gamma = 5.0;
+scalarField a_n(globalAreas / sum(globalAreas));
+scalar dzMean(sum(a_n*globalDz));
+scalar alphaAll = gamma / Ldef * max( mag( globalDz - dzMean ) );
+
+Info << "alpha " << alphaAll << endl;
+
+scalar interpDz(0.0);
+
+const label totalPoints = mesh.points().size();
+label maxTotalPoints = totalPoints;
+reduce(maxTotalPoints, maxOp<label>());
+
+label localCount = 0;  // Count of processed points by this processor
+
+scalar nextPctg(1.0);
+scalar percentage(0.0);
+    
+// Loop over all points in the mesh to interpolate vertical deformation
+forAll(pDeform,pointi)
+{                
+    localCount++;      
+    percentage = 100.0 * static_cast<scalar>(localCount) / totalPoints;
+        
+    // The percentage is computed with respect to the maximum number 
+    // of points among all the processors
+    scalar GlobalPercentage = 100.0 * static_cast<scalar>(localCount) / maxTotalPoints;
+
+    if ( percentage >= 100.0 )
+    {
+        Sout << "Proc" << Pstream::myProcNo() << " deformation completed" << endl; 
+    }
+
+    if ( GlobalPercentage >= nextPctg )
+    {
+        Info << "Progress: " << nextPctg << "% completed." << endl;
+        nextPctg += 1.0;            
+    }
+  
+    pEval = mesh.points()[pointi];
+
+    if ( mag(pEval.z()-zMax) < 1.e-3 )
+    {
+        interpDz = maxTopo;  
+    } 
+    else
+    {
+        if ( pEval.z() < 1.e-3 )
+        {
+            // For points on or below the topography consider only (x,y)
+            pEval.z() = 0.0;
+        }    
+
+        // Interpolation based on full 3D weighted inverse distance 
+        interpDz = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, globalPointsX, 
+                             globalPointsY, globalPointsZ, globalDz, globalAreas);        
+    }
+ 
+    // New elevation of the deformed point, used to compute the enlargement
+    zNew = mesh.points()[pointi].z() + interpDz;
+
+    // Compute coefficient for horizontal enlargement                
+    if (dzVert > 0)
+    {
+        // Enlarge from a fixed height above the maximum
+        // topography and the top, thus from an horizontal
+        // plane to the top
+        z2Rel = max(0, (zNew - zVert) / (zMax + maxTopo - zVert));
+    }
+    else
+    {
+        // Enlarge from the topography to the top
+        z2Rel = (zNew - interpDz) / (zMax + maxTopo - interpDz);
+    }
+    z2Rel = std::pow(z2Rel,exp_shape);
+                
+    pDeform[pointi].x() = z2Rel*(expFactor-1.0)*pEval.x();
+    pDeform[pointi].y() = z2Rel*(expFactor-1.0)*pEval.y();
+    pDeform[pointi].z() = interpDz;
+} 
+      
+pointField newPoints(zeroPoints + pDeform);
+mesh.setPoints(newPoints);
+
+Sout << "Proc" << Pstream::myProcNo() << " mesh updated" << endl; 
+
+if ( checkMesh )
+{
+    const faceList& pFaces = mesh.faces();
+    const pointField& pPts = mesh.points();
+    const vectorField& pC = mesh.cellCentres();
+    const labelList& pOwner = mesh.faceOwner();
+
+    scalar minQ(1.0);
+
+    forAll(faceIndices, facei)
+    {
+        const face& f = pFaces[faceIndices[facei]];
+        scalar flatness = calculateFlatness(f, pPts);
+ 
+        if ( flatness < 0.98 )
+        {   
+            Sout << "Proc" << Pstream::myProcNo() << " face " << facei 
+                 << " flatness " << flatness << endl; 
+        }               
+
+        label oCI = pOwner[faceIndices[facei]];
+
+        point oCc = pC[oCI];
+
+        minQ = 1.0;
+
+        forAll(f, faceBasePtI)
+        {
+            minQ = minQuality(mesh, oCc, faceIndices[facei], true, faceBasePtI);
+        }
+        
+        if (minQ < 1e-15)
+        {
+            Sout << "Proc" << Pstream::myProcNo() << " face " << facei << " minQ " << minQ << endl; 
+            forAll(f,ip)
+            {
+                Sout << ip << " coord " << pPts[f[ip]] << endl;
+            }
+            Sout << " oCc " << oCc << endl;
+        }
+    }
+}
+   
+Info << "Writing new mesh" << endl;
+mesh.setInstance("constant");
+mesh.write();
+
+Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
+    << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+    << nl << endl;
+
+Info<< "End\n" << endl;
+return 0;
+} 
 
 
 // ************************************************************************* //
