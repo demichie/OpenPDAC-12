@@ -422,14 +422,14 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(
     const point& internalPoint,
     const scalarField& boundaryPointsX,
     const scalarField& boundaryPointsY,
-    const scalarField& boundaryArea,
-    const scalarField& boundaryDz,
+    const scalarField& boundaryVal1,
+    const scalarField& boundaryVal2,
     const scalar& interpRelRadius)
 {
-    scalar interpolatedDz(0.0);
-    scalar interpolatedArea(0.0);
+    scalar interpolatedVal1(0.0);
+    scalar interpolatedVal2(0.0);
 
-    const label n = boundaryDz.size();
+    const label n = boundaryVal1.size();
     scalar minValue = GREAT;
     label minIndex = -1;
 
@@ -452,13 +452,13 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(
     // Special case: very close to a boundary point
     if (minValue < 1.e-5)
     {
-        interpolatedDz = boundaryDz[minIndex];
-        interpolatedArea = boundaryArea[minIndex];
+        interpolatedVal1 = boundaryVal1[minIndex];
+        interpolatedVal2 = boundaryVal2[minIndex];
     }
     else
     {
         // General case: weighted interpolation
-        scalar NumDz(0.0), NumArea(0.0), Den(0.0);
+        scalar NumVal2(0.0), NumVal1(0.0), Den(0.0);
 
         const scalar radiusThreshold = interpRelRadius * minValue;
 
@@ -471,16 +471,16 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(
             if (distance > radiusThreshold)
                 weight = 0.0;
 
-            NumDz += weight * boundaryDz[i];
-            NumArea += weight * boundaryArea[i];
+            NumVal1 += weight * boundaryVal1[i];
+            NumVal2 += weight * boundaryVal2[i];
             Den += weight;
         }
 
-        interpolatedDz = NumDz / Den;
-        interpolatedArea = NumArea / Den;
+        interpolatedVal1 = NumVal1 / Den;
+        interpolatedVal2 = NumVal2 / Den;
     }
 
-    return Tuple2<scalar, scalar>(interpolatedDz, interpolatedArea);
+    return Tuple2<scalar, scalar>(interpolatedVal1, interpolatedVal2);
 }
 
 // Function to calculate the average of a sub-block 
@@ -898,8 +898,8 @@ forAll(pDeform,pointi)
         Tuple2<scalar, scalar> result;
 
         result = inverseDistanceInterpolationDzBottom(pEval, globalBottomCentresX, 
-                 globalBottomCentresY, globalBottomCentresAreas, 
-                 globalBottomCentresDz, interpRelRadius);
+                 globalBottomCentresY, globalBottomCentresDz, 
+                 globalBottomCentresAreas, interpRelRadius);
 
         scalar interpDz = result.first();
         scalar interpArea = result.second();   
@@ -1003,8 +1003,8 @@ forAll(pDeform,pointi)
                  globalBottomCentresY, globalBottomCentresDx, 
                  globalBottomCentresDy, interpRelRadius);
 
-        pDx.append( result.second() );
-        pDy.append( result.first() );        
+        pDx.append( result.first() );
+        pDy.append( result.second() );        
     }
 } 
 
