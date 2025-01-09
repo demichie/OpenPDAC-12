@@ -47,7 +47,7 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
   3. Include only face centers within $d_{\text{threshold}}$ in the summation.
   4. Compute weights ($w_i$) for the included face centers:
 
-     $$w_i = \frac{1}{d_i}, \quad d_i \leq d_{\text{threshold}}
+     $$w_i = \frac{1}{d_i^2}, \quad d_i \leq d_{\text{threshold}}
      $$
 
   5. Interpolate the vertical displacement ($\Delta z$) as:
