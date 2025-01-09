@@ -465,7 +465,7 @@ Tuple2<scalar, scalar> inverseDistanceInterpolationDzBottom(
         for (label i = 0; i < n; ++i)
         {
             scalar distance = distances[i];
-            scalar weight = minValue / distance;
+            scalar weight = minValue / (distance*distance);
 
             // Neglect points outside the relative radius
             if (distance > radiusThreshold)
@@ -750,7 +750,7 @@ scalarField bottomCentresX(z0FaceIndices.size());
 scalarField bottomCentresY(z0FaceIndices.size());
 scalarField bottomCentresZ(z0FaceIndices.size());
 scalarField bottomAreas(z0FaceIndices.size());
-scalarField dzBottom(z0FaceIndices.size());
+scalarField vottomCentresDz(z0FaceIndices.size());
 
 // Loop through each face in the list and compute dz with bilinear interpolation
 forAll(z0FaceIndices, facei)
@@ -787,7 +787,7 @@ forAll(z0FaceIndices, facei)
         bottomCentresY[facei] = faceCentres[z0FaceIndices[facei]].y();
         bottomCentresZ[facei] = faceCentres[z0FaceIndices[facei]].z();
         bottomAreas[facei] =  magFaceAreas[z0FaceIndices[facei]];
-        dzBottom[facei] = zInterp-faceCentres[z0FaceIndices[facei]].z();            
+        vottomCentresDz[facei] = zInterp-faceCentres[z0FaceIndices[facei]].z();            
     }
     else
     {
@@ -798,16 +798,16 @@ forAll(z0FaceIndices, facei)
   
 // Create list with nproc fields
 List<scalarField> CentresX(Pstream::nProcs());
-CentresX[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+CentresX[Pstream::myProcNo()].setSize(vottomCentresDz.size(), Pstream::myProcNo());
 
 List<scalarField> CentresY(Pstream::nProcs());
-CentresY[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+CentresY[Pstream::myProcNo()].setSize(vottomCentresDz.size(), Pstream::myProcNo());
 
 List<scalarField> Dz(Pstream::nProcs());
-Dz[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+Dz[Pstream::myProcNo()].setSize(vottomCentresDz.size(), Pstream::myProcNo());
 
 List<scalarField> Areas(Pstream::nProcs());
-Areas[Pstream::myProcNo()].setSize(dzBottom.size(), Pstream::myProcNo());
+Areas[Pstream::myProcNo()].setSize(vottomCentresDz.size(), Pstream::myProcNo());
 
 // Each processor populate its field in the list of fields
 for (label i = 0; i < bottomCentresX.size(); ++i)
@@ -815,7 +815,7 @@ for (label i = 0; i < bottomCentresX.size(); ++i)
     CentresX[Pstream::myProcNo()][i] = bottomCentresX[i];
     CentresY[Pstream::myProcNo()][i] = bottomCentresY[i];
     Areas[Pstream::myProcNo()][i] = bottomAreas[i];
-    Dz[Pstream::myProcNo()][i] = dzBottom[i];
+    Dz[Pstream::myProcNo()][i] = vottomCentresDz[i];
 }
 
 // Use gather and scatter to have the full lists for all the processors    
@@ -879,16 +879,16 @@ Info << "Global number of points: " << globalNumPoints << endl << endl;
     
 // Lists for the mesh points at z=0 and for the area and deformation at these points
 // These lists are created for each processor
-scalarList pX;
-scalarList pY;
-scalarList pZ;
-scalarList pArea;
-scalarList pDz;
+scalarList bottomPointsX;
+scalarList bottomPointsY;
+scalarList bottomPointsZ;
+scalarList bottomPointsArea;
+scalarList bottomPointsDz;
 labelList  localIdx;
 
 point pEval(zeroPoints[0]);
     
-// Loop over the oints with z=0 to compute the deformation from the face centers
+// Loop over the points with z=0 to compute the deformation from the face centers
 forAll(pDeform,pointi)
     {
     pEval = mesh.points()[pointi];
@@ -904,15 +904,14 @@ forAll(pDeform,pointi)
         scalar interpDz = result.first();
         scalar interpArea = result.second();   
             
-        pX.append( pEval.x() );
-        pY.append( pEval.y() );
-        pZ.append( 0.0 );
-        pArea.append( interpArea );
-        pDz.append( interpDz );
+        bottomPointsX.append( pEval.x() );
+        bottomPointsY.append( pEval.y() );
+        bottomPointsZ.append( 0.0 );
+        bottomPointsArea.append( interpArea );
+        bottomPointsDz.append( interpDz );
         localIdx.append( pointi );
         
-        zeroPoints[pointi].z() = interpDz;
-        
+        zeroPoints[pointi].z() = interpDz;        
     }
 } 
 
@@ -987,10 +986,11 @@ for (label i = 0; i < Pstream::nProcs(); ++i)
 }
 
 
-scalarList pDx;
-scalarList pDy;
+scalarList bottomPointsDx;
+scalarList bottomPointsDy;
 
-// Loop over the oints with z=0 to compute the deformation from the face centers
+// Loop over the points with z=0 to interpolate the x,y components of normal 
+// unit vector from the face centers
 forAll(pDeform,pointi)
     {
     pEval = mesh.points()[pointi];
@@ -1003,8 +1003,8 @@ forAll(pDeform,pointi)
                  globalBottomCentresY, globalBottomCentresDx, 
                  globalBottomCentresDy, interpRelRadius);
 
-        pDx.append( result.first() );
-        pDy.append( result.second() );        
+        bottomPointsDx.append( result.first() );
+        bottomPointsDy.append( result.second() );        
     }
 } 
 
@@ -1026,10 +1026,10 @@ syncTools::syncPointList
     labelMax
 );
 
-Sout << "Proc" << Pstream::myProcNo() << " z=0 points " << pArea.size() << endl;
+Sout << "Proc" << Pstream::myProcNo() << " z=0 points " << bottomPointsArea.size() << endl;
 
 // Local number of points and cells
-label globalZ0Points = pArea.size();
+label globalZ0Points = bottomPointsArea.size();
     
 reduce(globalZ0Points, sumOp<scalar>());  // global sum   
 
@@ -1075,10 +1075,10 @@ Info << "Total interpolation points (including duplicated points) " << nGlobalPo
 scalarField topCentresX(patchTop.size());
 scalarField topCentresY(patchTop.size());
 scalarField topCentresZ(patchTop.size());
-scalarField topAreas(patchTop.size());
-scalarField dzTop(patchTop.size());
-scalarField dxTop(patchTop.size());
-scalarField dyTop(patchTop.size());
+scalarField topCentresAreas(patchTop.size());
+scalarField topCentresDz(patchTop.size());
+scalarField topCentresDx(patchTop.size());
+scalarField topCentresDy(patchTop.size());
 labelField globalIdxTop(patchTop.size());
 
 forAll(patchTop, facei)
@@ -1086,10 +1086,10 @@ forAll(patchTop, facei)
     topCentresX[facei] = faceCentres[patchTop.start() + facei].x();
     topCentresY[facei] = faceCentres[patchTop.start() + facei].y();
     topCentresZ[facei] = faceCentres[patchTop.start() + facei].z();
-    topAreas[facei] =  magFaceAreas[patchTop.start() + facei];
-    dzTop[facei] = maxTopo; 
-    dxTop[facei] = 0.0; 
-    dyTop[facei] = 0.0; 
+    topCentresAreas[facei] =  magFaceAreas[patchTop.start() + facei];
+    topCentresDz[facei] = maxTopo; 
+    topCentresDx[facei] = 0.0; 
+    topCentresDy[facei] = 0.0; 
     globalIdxTop[facei] = -1;       
 }
 
@@ -1097,39 +1097,39 @@ forAll(patchTop, facei)
 // both the z=0 and z=zMax interpolation points
     
 List<scalarField> concatenatedPointsX(Pstream::nProcs());
-concatenatedPointsX[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+concatenatedPointsX[Pstream::myProcNo()].setSize(bottomPointsDz.size() + topCentresDz.size(), Pstream::myProcNo());
 
 List<scalarField> concatenatedPointsY(Pstream::nProcs());
-concatenatedPointsY[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+concatenatedPointsY[Pstream::myProcNo()].setSize(bottomPointsDz.size() + topCentresDz.size(), Pstream::myProcNo());
 
 List<scalarField> concatenatedPointsZ(Pstream::nProcs());
-concatenatedPointsZ[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+concatenatedPointsZ[Pstream::myProcNo()].setSize(bottomPointsDz.size() + topCentresDz.size(), Pstream::myProcNo());
 
 List<scalarField> concatenatedDz(Pstream::nProcs());
-concatenatedDz[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+concatenatedDz[Pstream::myProcNo()].setSize(bottomPointsDz.size() + topCentresDz.size(), Pstream::myProcNo());
 
 List<scalarField> concatenatedDx(Pstream::nProcs());
-concatenatedDx[Pstream::myProcNo()].setSize(pDx.size() + dxTop.size(), Pstream::myProcNo());
+concatenatedDx[Pstream::myProcNo()].setSize(bottomPointsDx.size() + topCentresDx.size(), Pstream::myProcNo());
 
 List<scalarField> concatenatedDy(Pstream::nProcs());
-concatenatedDy[Pstream::myProcNo()].setSize(pDy.size() + dyTop.size(), Pstream::myProcNo());
+concatenatedDy[Pstream::myProcNo()].setSize(bottomPointsDy.size() + topCentresDy.size(), Pstream::myProcNo());
 
 List<scalarField> concatenatedAreas(Pstream::nProcs());
-concatenatedAreas[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+concatenatedAreas[Pstream::myProcNo()].setSize(bottomPointsDz.size() + topCentresDz.size(), Pstream::myProcNo());
 
 List<labelField> concatenatedGlobalIndex(Pstream::nProcs());
-concatenatedGlobalIndex[Pstream::myProcNo()].setSize(pDz.size() + dzTop.size(), Pstream::myProcNo());
+concatenatedGlobalIndex[Pstream::myProcNo()].setSize(bottomPointsDz.size() + topCentresDz.size(), Pstream::myProcNo());
 
 // Copy the z=0 interpolation points into the new field
-for (label i = 0; i < pDz.size(); ++i)
+for (label i = 0; i < bottomPointsDz.size(); ++i)
 {
-    concatenatedPointsX[Pstream::myProcNo()][i] = pX[i];
-    concatenatedPointsY[Pstream::myProcNo()][i] = pY[i];
-    concatenatedPointsZ[Pstream::myProcNo()][i] = pZ[i];
-    concatenatedAreas[Pstream::myProcNo()][i] = pArea[i];
-    concatenatedDz[Pstream::myProcNo()][i] = pDz[i];
-    concatenatedDx[Pstream::myProcNo()][i] = pDx[i];
-    concatenatedDy[Pstream::myProcNo()][i] = pDy[i];
+    concatenatedPointsX[Pstream::myProcNo()][i] = bottomPointsX[i];
+    concatenatedPointsY[Pstream::myProcNo()][i] = bottomPointsY[i];
+    concatenatedPointsZ[Pstream::myProcNo()][i] = bottomPointsZ[i];
+    concatenatedAreas[Pstream::myProcNo()][i] = bottomPointsArea[i];
+    concatenatedDz[Pstream::myProcNo()][i] = bottomPointsDz[i];
+    concatenatedDx[Pstream::myProcNo()][i] = bottomPointsDx[i];
+    concatenatedDy[Pstream::myProcNo()][i] = bottomPointsDy[i];
     concatenatedGlobalIndex[Pstream::myProcNo()][i] = globalIdx[i];
 }
 
@@ -1137,14 +1137,14 @@ for (label i = 0; i < pDz.size(); ++i)
 // starting after the end of the first
 for (label i = 0; i < topCentresX.size(); ++i)
 {
-    concatenatedPointsX[Pstream::myProcNo()][i + pX.size()] = topCentresX[i];
-    concatenatedPointsY[Pstream::myProcNo()][i + pY.size()] = topCentresY[i];
-    concatenatedPointsZ[Pstream::myProcNo()][i + pZ.size()] = topCentresZ[i];
-    concatenatedAreas[Pstream::myProcNo()][i + pArea.size()] = topAreas[i];
-    concatenatedDz[Pstream::myProcNo()][i + pDz.size()] = dzTop[i];
-    concatenatedDx[Pstream::myProcNo()][i + pDx.size()] = dxTop[i];
-    concatenatedDy[Pstream::myProcNo()][i + pDy.size()] = dyTop[i];
-    concatenatedGlobalIndex[Pstream::myProcNo()][i + pDz.size()] = globalIdxTop[i];
+    concatenatedPointsX[Pstream::myProcNo()][i + bottomPointsX.size()] = topCentresX[i];
+    concatenatedPointsY[Pstream::myProcNo()][i + bottomPointsY.size()] = topCentresY[i];
+    concatenatedPointsZ[Pstream::myProcNo()][i + bottomPointsZ.size()] = topCentresZ[i];
+    concatenatedAreas[Pstream::myProcNo()][i + bottomPointsArea.size()] = topCentresAreas[i];
+    concatenatedDz[Pstream::myProcNo()][i + bottomPointsDz.size()] = topCentresDz[i];
+    concatenatedDx[Pstream::myProcNo()][i + bottomPointsDx.size()] = topCentresDx[i];
+    concatenatedDy[Pstream::myProcNo()][i + bottomPointsDy.size()] = topCentresDy[i];
+    concatenatedGlobalIndex[Pstream::myProcNo()][i + bottomPointsDz.size()] = globalIdxTop[i];
 }
 
 // Gather values from other processors
@@ -1335,14 +1335,18 @@ forAll(pDeform,pointi)
         dxMin_rel = (pEval.x() - xMin)/(xMax-xMin);
         dxMax_rel = (xMax - pEval.x())/(xMax-xMin);
     
-        dyMin_rel = (pEval.y() - yMin)/(yMax-xMin);
-        dyMax_rel = (yMax - pEval.y())/(yMax-xMin);
+        dyMin_rel = (pEval.y() - yMin)/(yMax-yMin);
+        dyMax_rel = (yMax - pEval.y())/(yMax-yMin);
 
         xCoeff = max(0.0,min(1.0,(min(dxMin_rel,dxMax_rel)-dist_rel1)/(dist_rel2-dist_rel1)));
-        yCoeff = max(0.0,min(1.0,(min(dyMin_rel,dyMax_rel)-dist_rel1)/(dist_rel2-dist_rel1)));    
+        yCoeff = max(0.0,min(1.0,(min(dyMin_rel,dyMax_rel)-dist_rel1)/(dist_rel2-dist_rel1)));
 
         pDeform[pointi].x() = xCoeff * interpDx * pEval.z();
         pDeform[pointi].y() = yCoeff * interpDy * pEval.z();     
+
+        // pDeform[pointi].x() = interpDx * pEval.z();
+        // pDeform[pointi].y() = interpDy * pEval.z();     
+
 
         pDeform[pointi].x() += z2Rel*(expFactor-1.0)*(pEval.x()+pDeform[pointi].x());
         pDeform[pointi].y() += z2Rel*(expFactor-1.0)*(pEval.y()+pDeform[pointi].y());
