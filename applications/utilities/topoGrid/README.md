@@ -1,6 +1,6 @@
 # Mesh Deformation Procedure in **topoGridNew**
 
-The **topoGridNew** utility deforms the computational mesh to conform to a given topography. The process uses a combination of bilinear interpolation, inverse distance weighting (IDW), and blending techniques to compute vertical displacements and areas. The deformation accounts for contributions from the base ($z = 0$) and the top boundary to compute the deformation at all the points of the mesh.
+The **topoGridNew** utility deforms the computational mesh to conform to a given topography. The process uses a combination of bilinear interpolation, inverse distance weighting (IDW), and blending techniques to compute vertical displacements and areas. The deformation accounts for contributions from the base ($z = 0$) and the top boundary to compute the deformation at the internal points of the mesh.
 
 ---
 
@@ -47,7 +47,7 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
   3. Include only face centers within $d_{\text{threshold}}$ in the summation.
   4. Compute weights ($w_i$) for the included face centers:
 
-     $$w_i = \frac{1}{d_i^2}, \quad d_i \leq d_{\text{threshold}}
+     $$w_i = \frac{1}{d_i}, \quad d_i \leq d_{\text{threshold}}
      $$
 
   5. Interpolate the vertical displacement ($\Delta z$) as:
@@ -68,11 +68,11 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
 
 ## 3. Merging Displacements and Areas
 
-- **Objective**: Combine the interpolated values from mesh points at $z = 0$ with the fixed displacements and areas associated with the centers of faces of the top boundary.
+- **Objective**: Combine the interpolated values from mesh points at $z = 0$ with the fixed displacements and areas associated with the centers of the top-face boundary.
 
 - **Procedure**:
-  1. Prescribed vertical displacements ($\Delta z_{\text{top}}$) are assigned to the top-face centers, typically based on the maximum topography height. The areas are computed from the code. 
-  2. Combine these top-face values with the $z = 0$ point values to form a single global list:
+  1. Prescribed vertical displacements ($\Delta z_{\text{top}}$) and areas are assigned to the top-face centers, typically based on the maximum topography height.
+  2. Combine these top-face values with the $z = 0$ mesh-point values to form a single global list:
      - $\Delta z_{\text{global}}$: Merged list of vertical displacements.
      - $\text{Area}_{\text{global}}$: Merged list of areas.
 
@@ -83,27 +83,42 @@ The **topoGridNew** utility deforms the computational mesh to conform to a given
 
 ---
 
-## 4. Second Inverse Distance Weighting (IDW) for all Mesh Points
+## 4. Second Inverse Distance Weighting (IDW) for Internal Mesh Points
 
-- **Objective**: Compute the vertical deformation for all mesh points using the global list of displacements and areas.
+- **Objective**: Compute the vertical deformation for all internal mesh points using the global list of displacements and areas.
 
-- **Procedure**:
-  1. For each mesh point, compute the weights ($w_i$) for all global points using:
+### **3D IDW Interpolation**:
+1. For each internal mesh point, compute the weights ($w_i$) for all global points using:
 
-     $$w_i = \text{Area}_{i} \cdot \left[\left(\frac{L}{d_i}\right)^3 + \left(\alpha \cdot \frac{L}{d_i}\right)^5\right]
-     $$
+   $$w_i = \text{Area}_{i} \cdot \left[\left(\frac{L}{d_i}\right)^3 + \left(\alpha \cdot \frac{L}{d_i}\right)^5\right]
+   $$
 
-     - $L$: Estimated length of the deformation region.
-     - $\alpha$: Fraction of $L$, representing the near-body influence region.
-     - $d_i$: Euclidean distance to the global point. For the mesh points with $z<0$, we set $z=0$ when computing the distance from the global points.
-  2. Interpolate the vertical deformation ($\Delta z_{\text{mesh}}$):
+   - $L$: Estimated length of the deformation region.
+   - $\alpha$: Fraction of $L$, representing the near-body influence region.
+   - $d_i$: Euclidean distance to the global point.
+2. Interpolate the vertical deformation ($\Delta z_{\text{3D}}$):
 
-     $$\Delta z_{\text{mesh}} = \frac{\sum_i w_i \Delta z_i}{\sum_i w_i}
-     $$
+   $$\Delta z_{\text{3D}} = \frac{\sum_i w_i \Delta z_i}{\sum_i w_i}
+   $$
+
+
+### **Bottom-Up Interpolation**:
+- This follows the same procedure as **Step 2**, using only $z = 0$ face centers.
+
+### **Blending**:
+1. Compute the relative height of the mesh point:
+
+   $$z_{\text{rel}} = \frac{z_{\text{mesh}} - z_{\text{min}}}{z_{\text{max}} - z_{\text{min}}}
+   $$
+
+2. Blend the deformations:
+
+   $$\Delta z_{\text{mesh}} = z_{\text{rel}} \cdot \Delta z_{\text{3D}} + (1 - z_{\text{rel}}) \cdot \Delta z_{\text{2D}}
+   $$
 
 
 - **Output**:
-  - Vertical deformation ($\Delta z_{\text{mesh}}$) for all mesh points.
+  - Vertical deformation ($\Delta z_{\text{mesh}}$) for all internal mesh points.
 
 ---
 
