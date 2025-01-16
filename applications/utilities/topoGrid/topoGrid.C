@@ -945,9 +945,17 @@ if (orthogonalCorrection)
             sumA += a;
         }
         const vector sumAHat = normalised(sumA);
-        // Info << "face " << facei << " sumAHat " << sumAHat << endl;
-        dxBottom[facei] = -sumAHat.x();
-        dyBottom[facei] = -sumAHat.y();
+
+        if ( sumAHat.z() < 0.0 )
+        {
+            dxBottom[facei] = -sumAHat.x();
+            dyBottom[facei] = -sumAHat.y();
+        }
+        else
+        {
+            dxBottom[facei] = sumAHat.x();
+            dyBottom[facei] = sumAHat.y();
+        }
    }
 }
 else
