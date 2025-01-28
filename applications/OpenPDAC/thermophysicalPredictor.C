@@ -131,21 +131,100 @@ void Foam::solvers::OpenPDAC::thermophysicalPredictor()
                 const phaseModel& phase =
                     fluid.anisothermalPhases()[anisothermalPhasei];
 
-                if (&phase != &continuousPhase)
+                if ( (&phase != &continuousPhase) && correctTdispersed )
                 {
+
                     volScalarField he1 = phase.thermo().he(p_,phase.thermo().T());
                     volScalarField he2 = phase.thermo().he(p_,continuousPhase.thermo().T());
                     volScalarField& heNew = const_cast<volScalarField&>(phase.thermo().he());
+
+                    /*
+                    Info<< "BEFORE CORRECTION" << endl;
+                    Info<< phase.name() << " min/max T "
+                        << min(phase.thermo().T()).value()
+                        << " - "
+                        << max(phase.thermo().T()).value()
+                        << endl;
+                    Info<< continuousPhase.name() << " min/max T "
+                        << min(continuousPhase.thermo().T()).value()
+                        << " - "
+                        << max(continuousPhase.thermo().T()).value()
+                        << endl;
+                    */    
                     
-                    heNew = phase/max(phase, phase.residualAlpha()) * he1 
-                            + ( 1.0 - phase/max(phase, phase.residualAlpha()) ) * he2;
-                                       
                     heNew = pos0(phase-phase.residualAlpha())*he1 
                             + neg(phase-phase.residualAlpha())*he2;
 
-                    heNew.correctBoundaryConditions();
+
+                    /*
+
+                    volScalarField::Boundary& bf = heNew.boundaryFieldRef();
+
+                    const basicThermo& thermo =
+                        mesh().lookupObject<basicThermo>
+                        (
+                            IOobject::groupName(physicalProperties::typeName, phase.name())
+                        );
+
+
+                    forAll(bf, patchi)
+                    {
+                        fvPatchScalarField& hep = bf[patchi];
+
+                        if (!hep.fixesValue())
+                        {
+
+                            const scalarField pMod(p_.boundaryField()[patchi]);
+                            const scalarField Tmod(continuousPhase.thermo().T().boundaryField()[patchi]);
+
+                            const scalarField heMod(thermo.he(Tmod,patchi));
+                                          
+                            forAll(hep, facei)
+                            {
+                                if (phase.boundaryField()[patchi][facei]<phase.residualAlpha().value() )
+                                {
+                                    // Info << "patch " << patchi << " face " << facei << " alpha " <<
+                                    //         phase.boundaryField()[patchi][facei] << endl;
+                                            
+                                    hep[facei] = heMod[facei];
+                                }
+                            }
+                        }
+                    }
+                    */
 
                     fluid_.correctThermo();
+
+                    /*
+                    Info<< "AFTER CORRECTION" << endl;
+                    Info<< phase.name() << " min/max T "
+                        << min(phase.thermo().T()).value()
+                        << " - "
+                        << max(phase.thermo().T()).value()
+                        << endl;
+                        
+
+                    // Initialize minimum value and corresponding cell index
+                    scalar minT = GREAT;
+                    scalar minAlpha = GREAT;
+                    label minCell = -1;
+
+                    // Loop over all cells
+                    forAll(phase.thermo().T(), cellI)
+                    {
+                        if (phase.thermo().T()[cellI] < minT)
+                        {
+                            minT = phase.thermo().T()[cellI];
+                            minAlpha = phase()[cellI];
+                            minCell = cellI;
+                        }
+                    }
+
+                    // Print result
+                    Info << "Minimum temperature: " << minT << " at cell " << minCell << endl;
+                    Info << "alfa at min Temp: " << minAlpha << endl;
+                    */
+
                 }
             }
 
