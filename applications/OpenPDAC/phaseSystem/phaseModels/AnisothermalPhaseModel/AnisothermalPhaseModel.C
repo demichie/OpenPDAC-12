@@ -187,6 +187,8 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
       //+ alpha*rho*(U&g_)
     );
 
+    const word continuousPhaseName = this->fluid().continuousPhaseName();
+        
     // Add the appropriate pressure-work term
     if (he.name() == this->thermo_->phasePropertyName("e"))
     {
@@ -202,15 +204,21 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
     }
     else if (this->thermo_->dpdt())
     {
-
-        const word continuousPhaseName = this->fluid().continuousPhaseName();
         const word phaseName = this->name();
-
         if (phaseName == continuousPhaseName)
         {
-            tEEqn.ref() -= filterPressureWork(alpha*this->fluid().dpdt());
-        }
+            volScalarField DpDt(this->fluid().dpdt() + 
+                            fvc::div(this->phi(), this->fluidThermo().p()));
 
+            if (U.mesh().moving())
+            {
+                DpDt -= fvc::div(this->phi() + U.mesh().phi())*this->fluidThermo().p();
+            }
+            else
+            {
+                DpDt -= fvc::div(this->phi())*this->fluidThermo().p();            
+            }
+        }        
     }
 
     return tEEqn;

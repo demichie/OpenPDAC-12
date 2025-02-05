@@ -95,6 +95,11 @@ protected:
         //  Defaults to 1
         int nEnergyCorrectors;
 
+        //- set dispersed phase temperature as continuum when alpha<residual
+        //  Defaults to false
+        Switch correctTdispersed;
+
+
         dictionary energyControlDict;
 
         //- Partial elimination drag contribution optimisation
