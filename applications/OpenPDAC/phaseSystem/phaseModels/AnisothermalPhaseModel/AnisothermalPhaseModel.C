@@ -218,6 +218,7 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
             {
                 DpDt -= fvc::div(this->phi())*this->fluidThermo().p();            
             }
+            tEEqn.ref() -= filterPressureWork(DpDt);
         }        
     }
 
