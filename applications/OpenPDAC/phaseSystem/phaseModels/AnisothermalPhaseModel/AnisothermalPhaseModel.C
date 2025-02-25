@@ -164,6 +164,14 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
     const tmp<surfaceScalarField> talphaRhoPhi(this->alphaRhoPhi());
     const surfaceScalarField& alphaRhoPhi(talphaRhoPhi());
 
+    const tmp<surfaceScalarField> talphaPhi(this->alphaPhi());
+    const surfaceScalarField& alphaPhi(talphaPhi());
+
+
+    const tmp<surfaceScalarField> tPhi(this->phi());
+    const surfaceScalarField& phi(tPhi());
+
+
     const tmp<volScalarField> tcontErr(this->continuityError());
     const volScalarField& contErr(tcontErr());
 
@@ -192,34 +200,38 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
     // Add the appropriate pressure-work term
     if (he.name() == this->thermo_->phasePropertyName("e"))
     {
-        tEEqn.ref() += filterPressureWork
+        tEEqn.ref() -= filterPressureWork
         (
-            fvc::div
-            (
-                fvc::absolute(alphaRhoPhi, alpha, rho, U),
-                this->fluidThermo().p()/rho
+        
+            this->fluidThermo().p() * 
+            ( fvc::ddt(alpha)
+            + fvc::div
+                (
+                    fvc::absolute(phi,U),
+                    alpha
+                )
             )
-          + (fvc::ddt(alpha) - contErr/rho)*this->fluidThermo().p()
         );
     }
     else if (this->thermo_->dpdt())
     {
-        const word phaseName = this->name();
-        if (phaseName == continuousPhaseName)
-        {
-            volScalarField DpDt(this->fluid().dpdt() + 
-                            fvc::div(this->phi(), this->fluidThermo().p()));
-
-            if (U.mesh().moving())
-            {
-                DpDt -= fvc::div(this->phi() + U.mesh().phi())*this->fluidThermo().p();
-            }
-            else
-            {
-                DpDt -= fvc::div(this->phi())*this->fluidThermo().p();            
-            }
+        // const word phaseName = this->name();
+        // if (phaseName == continuousPhaseName)
+        // {
+            volScalarField DpDt(alpha*this->fluid().dpdt() + 
+                fvc::div
+                (
+                    fvc::absolute(alphaPhi, alpha, U),
+                    this->fluidThermo().p()
+                ) 
+                - fvc::div
+                (
+                    fvc::absolute(phi,U),
+                    alpha
+                )*this->fluidThermo().p()
+                );            
             tEEqn.ref() -= filterPressureWork(DpDt);
-        }        
+        // }        
     }
 
     return tEEqn;
