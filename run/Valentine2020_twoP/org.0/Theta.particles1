@@ -42,8 +42,8 @@ boundaryField
     groundAndWall
     {
         type            JohnsonJacksonParticleTheta;
-        restitutionCoefficient restitutionCoefficient [0 0 0 0 0 0 0] 0.8;
-        specularityCoefficient specularityCoefficient [0 0 0 0 0 0 0] 0.01;
+        restitutionCoefficient 0.8;
+        specularityCoefficient 0.01;
         value           uniform 1e-4;
     }
     axis
