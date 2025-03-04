@@ -19,7 +19,7 @@ solvers
     "alpha.*"
     {
         nAlphaCorr      1;
-        nAlphaSubCycles 3;
+        nAlphaSubCycles 1;
         implicitPhasePressure yes;
 
         solver          PBiCGStab;
@@ -84,12 +84,29 @@ solvers
 
 PIMPLE
 {
-    nOuterCorrectors 3;
-    nCorrectors      2;
+    nOuterCorrectors 15;
+    nCorrectors      10;
+    nEnergyCorrectors   6;
     nNonOrthogonalCorrectors 0;
+    faceMomentum        yes;
+    dragCorrection      yes;
+    momentumPredictor   no; 
+    correctTdispersed   no;
+    
+    innerResidual 1e-5;
+    outerCorrectorResidualControl
+    {
+        p_rgh
+        {
+            tolerance 1e-05;
+            relTol 0;
+        }
+    } 
 
-    faceMomentum     no;
-
+    energyControl
+    {
+        "(h|e).*"    1e-5;
+    }         
 }
 
 relaxationFactors

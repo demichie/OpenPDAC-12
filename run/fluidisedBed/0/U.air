@@ -2,13 +2,14 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  dev
+    \\  /    A nd           | Version:  12
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    format      ascii;
+    format      binary;
     class       volVectorField;
+    location    "0";
     object      U.air;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -22,27 +23,25 @@ boundaryField
     inlet
     {
         type            interstitialInletVelocity;
-        inletVelocity   uniform (0 0.25 0);
         alpha           alpha.air;
-        value           $internalField;
+        inletVelocity   uniform (0 0.25 0);
+        value           uniform (0 0 0);
     }
-
     outlet
     {
         type            pressureInletOutletVelocity;
         phi             phi.air;
-        value           $internalField;
+        value           uniform (0 0 0);
     }
-
     walls
     {
         type            noSlip;
     }
-
     frontAndBackPlanes
     {
         type            empty;
     }
 }
+
 
 // ************************************************************************* //

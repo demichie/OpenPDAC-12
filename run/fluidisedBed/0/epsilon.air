@@ -2,47 +2,46 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  dev
+    \\  /    A nd           | Version:  12
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    format      ascii;
+    format      binary;
     class       volScalarField;
+    location    "0";
     object      epsilon.air;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions          [0 2 -3 0 0 0 0];
+dimensions      [0 2 -3 0 0 0 0];
 
-internalField       uniform 10;
+internalField   uniform 10;
 
 boundaryField
 {
     inlet
     {
         type            fixedValue;
-        value           $internalField;
+        value           uniform 10;
     }
-
     outlet
     {
         type            inletOutlet;
         phi             phi.air;
-        inletValue      $internalField;
-        value           $internalField;
+        inletValue      uniform 10;
+        value           uniform 10;
     }
-
     walls
     {
         type            epsilonWallFunction;
-        value           $internalField;
+        value           uniform 10;
     }
-
     frontAndBackPlanes
     {
         type            empty;
     }
 }
+
 
 // ************************************************************************* //

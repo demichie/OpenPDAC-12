@@ -18,19 +18,19 @@ application     foamRun;
 
 solver          OpenPDAC;
 
-startFrom       latestTime;
+startFrom       startTime;
 
 startTime       0;
 
 stopAt          endTime;
 
-endTime         2;
+endTime         5;
 
 deltaT          2e-4;
 
 writeControl    adjustableRunTime;
 
-writeInterval   0.01;
+writeInterval   0.25;
 
 purgeWrite      0;
 
@@ -48,13 +48,9 @@ runTimeModifiable on;
 
 adjustTimeStep  yes;
 
-maxCo           2.0;
+maxCo           1.0;
 
 maxDeltaT       0.01;
 
-functions
-{
-    #includeFunc fieldAverage(U.particles, U.air, alpha.particles, p)
-}
 
 // ************************************************************************* //

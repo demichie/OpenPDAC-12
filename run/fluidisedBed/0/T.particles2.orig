@@ -10,30 +10,31 @@ FoamFile
     format      binary;
     class       volScalarField;
     location    "0";
-    object      nut.particles2;
+    object      T.particles2;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [0 2 -1 0 0 0 0];
+dimensions      [0 0 0 1 0 0 0];
 
-internalField   uniform 0;
+internalField   uniform 293;
 
 boundaryField
 {
     inlet
     {
-        type            calculated;
-        value           uniform 0;
+        type            fixedValue;
+        value           uniform 293;
     }
     outlet
     {
-        type            calculated;
-        value           uniform 0;
+        type            inletOutlet;
+        phi             phi.particles2;
+        inletValue      uniform 293;
+        value           uniform 293;
     }
     walls
     {
-        type            calculated;
-        value           uniform 0;
+        type            zeroGradient;
     }
     frontAndBackPlanes
     {

@@ -2,13 +2,14 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  dev
+    \\  /    A nd           | Version:  12
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    format      ascii;
+    format      binary;
     class       volScalarField;
+    location    "0";
     object      alphat.particles2;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -22,25 +23,23 @@ boundaryField
     inlet
     {
         type            calculated;
-        value           $internalField;
+        value           uniform 0;
     }
-
     outlet
     {
         type            calculated;
-        value           $internalField;
+        value           uniform 0;
     }
-
     walls
     {
         type            calculated;
-        value           $internalField;
+        value           uniform 0;
     }
-
-    defaultFaces
+    frontAndBackPlanes
     {
         type            empty;
     }
 }
+
 
 // ************************************************************************* //

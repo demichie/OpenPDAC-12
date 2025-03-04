@@ -7,37 +7,29 @@
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    format      ascii;
-    class       volScalarField;
-    object      T.particles1;
+    format          ascii;
+    class           dictionary;
+    location        "system";
+    object          functions;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions          [0 0 0 1 0 0 0];
-
-internalField       uniform 600;
-
-boundaryField
+writeObjects1
 {
-    inlet
-    {
-        type            zeroGradient;
-    }
+    type        writeObjects;
+    libs        ("libutilityFunctionObjects.so");
+    objects
+    (
+        alpha.particles1
+        T.particles1
+        alpha.particles2
+        T.particles2
+        alpha.air
+        T.air
+    );
 
-    outlet
-    {
-        type            zeroGradient;
-    }
-
-    walls
-    {
-        type            zeroGradient;
-    }
-
-    frontAndBackPlanes
-    {
-        type            empty;
-    }
+    writeControl    adjustableRunTime;
+    writeInterval   0.05;
 }
 
 // ************************************************************************* //

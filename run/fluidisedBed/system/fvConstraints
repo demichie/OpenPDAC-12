@@ -21,22 +21,22 @@ limitp
 }
 
 
-limitp
+limitalpha1
 {
     type            bound;
 
     field           alpha.particles1;
 
-    min             1.0e-6;
+    min             1.0e-10;
 }
 
-limitp
+limitalpha2
 {
     type            bound;
 
     field           alpha.particles2;
 
-    min             1.0e-6;
+    min             1.0e-10;
 }
 
 

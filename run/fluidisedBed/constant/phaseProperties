@@ -20,7 +20,6 @@ phases (particles1 particles2 air);
 
 continuousPhase air;
 
-
 particles1
 {
     type          purePhaseModel;
@@ -32,7 +31,7 @@ particles1
     }
 
     alphaMax        0.62;
-    residualAlpha   1e-6;
+    residualAlpha   1e-8;
 }
 
 particles2
@@ -46,9 +45,8 @@ particles2
     }
 
     alphaMax        0.62;
-    residualAlpha   1e-6;
+    residualAlpha   1e-8;
 }
-
 
 air
 {
@@ -94,7 +92,7 @@ drag
     particles2_dispersedIn_air
     {
         type            GidaspowErgunWenYu;
-        residualRe      1e-3;        
+        residualRe      1e-3;
     }
     particles1_particles2    
     {
@@ -115,12 +113,12 @@ heatTransfer
     particles1_dispersedIn_air
     {
         type            RanzMarshall;
-        residualAlpha   1e-4;
+        residualAlpha   1e-8;
     }
     particles2_dispersedIn_air
     {
         type            RanzMarshall;
-        residualAlpha   1e-4;
+        residualAlpha   1e-8;
     }
 }
 
