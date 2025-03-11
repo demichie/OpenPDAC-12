@@ -98,6 +98,7 @@ class AnisothermalPhaseModel
             >
         > thermophysicalTransport_;
 
+        Switch totalEnergy;
 
     // Private Member Functions
 

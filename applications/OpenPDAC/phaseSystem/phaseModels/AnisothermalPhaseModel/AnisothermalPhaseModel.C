@@ -80,7 +80,9 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::AnisothermalPhaseModel
             phaseCompressible::momentumTransportModel,
             transportThermoModel
         >::New(this->momentumTransport_, this->thermo_)
-    )
+    ),
+    totalEnergy(fluid.mesh().solution().dict().subDict("PIMPLE").subDict("energyControl").lookupOrDefault<Switch>("totalEnergy", false))
+
 {}
 
 
@@ -175,8 +177,8 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
     const tmp<volScalarField> tcontErr(this->continuityError());
     const volScalarField& contErr(tcontErr());
 
-    //tmp<volScalarField> tK(this->K());
-    //const volScalarField& K(tK());
+    tmp<volScalarField> tK(this->K());
+    const volScalarField& K(tK());
 
     volScalarField& he = this->thermo_->he();
 
@@ -185,53 +187,69 @@ Foam::AnisothermalPhaseModel<BasePhaseModel>::heEqn()
         fvm::ddt(alpha, rho, he)
       + fvm::div(alphaRhoPhi, he)
       - fvm::Sp(contErr, he)
-
-      //+ fvc::ddt(alpha, rho, K) + fvc::div(alphaRhoPhi, K)
-      //- contErr*K
-
       + this->divq(he)
      ==
         alpha*this->Qdot()
-      //+ alpha*rho*(U&g_)
     );
 
-    const word continuousPhaseName = this->fluid().continuousPhaseName();
-        
-    // Add the appropriate pressure-work term
-    if (he.name() == this->thermo_->phasePropertyName("e"))
+    Info << "totalEnergy: " << totalEnergy << endl;        
+    
+    if (totalEnergy)
     {
-        tEEqn.ref() -= filterPressureWork
-        (
-        
-            this->fluidThermo().p() * 
-            ( fvc::ddt(alpha)
-            + fvc::div
-                (
-                    fvc::absolute(phi,U),
-                    alpha
-                )
-            )
-        );
-    }
-    else if (this->thermo_->dpdt())
-    {
-        // const word phaseName = this->name();
-        // if (phaseName == continuousPhaseName)
-        // {
-            volScalarField DpDt(alpha*this->fluid().dpdt() + 
+        tEEqn.ref() += ( fvc::ddt(alpha, rho, K) + fvc::div(alphaRhoPhi, K)
+                 - contErr*K - alpha*rho*(U&g_));
+
+        // Add the appropriate pressure-work term
+        if (he.name() == this->thermo_->phasePropertyName("e"))
+        {
+            tEEqn.ref() += filterPressureWork
+            (
                 fvc::div
                 (
-                    fvc::absolute(alphaPhi, alpha, U),
-                    this->fluidThermo().p()
-                ) 
-                - fvc::div
-                (
-                    fvc::absolute(phi,U),
-                    alpha
-                )*this->fluidThermo().p()
-                );            
+                    fvc::absolute(alphaRhoPhi, alpha, rho, U),
+                    this->fluidThermo().p()/rho
+                )
+              + (fvc::ddt(alpha) - contErr/rho)*this->fluidThermo().p()
+            );
+        }
+        else if (this->thermo_->dpdt())
+        {
+            tEEqn.ref() -= filterPressureWork(alpha*this->fluid().dpdt());
+        }        
+    }
+    else
+    {
+        // Add the appropriate pressure-work term
+        if (he.name() == this->thermo_->phasePropertyName("e"))
+        {
+            tEEqn.ref() -= filterPressureWork
+            (        
+                this->fluidThermo().p() * 
+                ( fvc::ddt(alpha)
+                + fvc::div
+                    (
+                        fvc::absolute(phi,U),
+                        alpha
+                    )
+                )
+            );
+        }
+        else if (this->thermo_->dpdt())
+        {
+            volScalarField DpDt(alpha*this->fluid().dpdt() + 
+            fvc::div
+            (
+                fvc::absolute(alphaPhi, alpha, U),
+                this->fluidThermo().p()
+            ) 
+            - fvc::div
+            (
+                fvc::absolute(phi,U),
+                alpha
+            )*this->fluidThermo().p()
+            );            
             tEEqn.ref() -= filterPressureWork(DpDt);
-        // }        
+        }        
     }
 
     return tEEqn;
