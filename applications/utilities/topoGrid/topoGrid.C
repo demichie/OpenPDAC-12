@@ -364,6 +364,7 @@ scalar calculateFlatness(const face& f, const pointField& points)
 point inverseDistanceInterpolationDz(
     const scalar& Ldef, 
     const scalar& alpha, 
+    const scalar& coeffVertDeformation,
     const point& internalPoint, 
     const scalarField& boundaryPointsX, 
     const scalarField& boundaryPointsY, 
@@ -385,15 +386,23 @@ point inverseDistanceInterpolationDz(
     scalar NumX(0.0);
     scalar NumY(0.0);
     scalar Den(0.0);
+    scalar Den_z(0.0);
+    scalar distance_z, LbyD_z, LbyD3_z, weight_z;
     scalar distance, LbyD, LbyD3, weight;
+    scalar dist2_xy;
+    scalar dist2_z;
 
     for (label i = 0; i < n; ++i)
     {
-        distance = Foam::sqrt(
-            sqr(internalPoint.x() - boundaryPointsX[i]) +
-            sqr(internalPoint.y() - boundaryPointsY[i]) +
-            sqr(internalPoint.z() - boundaryPointsZ[i])
-        );
+    
+        dist2_xy = sqr(internalPoint.x() - boundaryPointsX[i]) +
+            sqr(internalPoint.y() - boundaryPointsY[i]);
+    
+        dist2_z = sqr(internalPoint.z() - boundaryPointsZ[i]);
+    
+        distance = Foam::sqrt(dist2_xy + dist2_z);
+
+        distance_z = Foam::sqrt(dist2_xy + coeffVertDeformation*dist2_z);
 
         if (distance < 1.e-5)
         {
@@ -404,14 +413,28 @@ point inverseDistanceInterpolationDz(
         LbyD = Ldef / distance;
         LbyD3 = LbyD * LbyD * LbyD;
         weight = boundaryAreas[i] * (LbyD3 + alpha5 * LbyD3 * LbyD * LbyD);
-            
-        NumZ += weight * boundaryDz[i];
+
         NumX += weight * boundaryDx[i];
         NumY += weight * boundaryDy[i];
         Den += weight;        
+
+        if (coeffVertDeformation<1.0)
+        {
+            LbyD_z = Ldef / distance_z;
+            LbyD3_z = LbyD_z * LbyD_z * LbyD_z;
+            weight_z = boundaryAreas[i] * (LbyD3_z + alpha5 * LbyD3_z * LbyD_z * LbyD_z);
+            
+        }
+        else
+        {
+            weight_z = weight;        
+        }
+        
+        NumZ += weight_z * boundaryDz[i];
+        Den_z += weight_z; 
     }
 
-    DeltaInterp = vector(NumX/Den,NumY/Den,NumZ/Den);
+    DeltaInterp = vector(NumX/Den,NumY/Den,NumZ/Den_z);
     
     return DeltaInterp;
 }
@@ -590,7 +613,8 @@ const Switch orthogonalCorrection = topoDict.lookupOrDefault<Switch>("orthogonal
 const scalar dist_rel1 = topoDict.lookupOrDefault<scalar>("dist_rel1", 0.1);
 const scalar dist_rel2 = topoDict.lookupOrDefault<scalar>("dist_rel2", 0.2);
     
-
+const scalar coeffVertDeformation = topoDict.lookupOrDefault<scalar>("coeffVertDeformation", 1.0);
+ 
 // Output the file name to the terminal for verification
 Info << "Raster file specified: " << rasterFile << endl;
 
@@ -1323,7 +1347,8 @@ forAll(pDeform,pointi)
         {
             // Interpolation based on full 3D weighted inverse distance 
         
-            DeltaInterp = inverseDistanceInterpolationDz(Ldef, alphaAll, pEval, 
+            DeltaInterp = inverseDistanceInterpolationDz(Ldef, alphaAll, 
+                        coeffVertDeformation, pEval, 
                         globalPointsX, globalPointsY, globalPointsZ, 
                         globalDz, globalDx, globalDy, globalAreas); 
 
