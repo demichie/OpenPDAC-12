@@ -740,10 +740,14 @@ Info << "zMax = " << zMax << endl;
  
 // Approximation of the maximum distance of any mesh node 
 // from the mesh centroid (Sen et al, 2017) 
-scalar Ldef(0.5*std::sqrt( sqr(xMax-xMin) + sqr(yMax-yMin) + sqr(zMax-zMin) ));
+// scalar Ldef(0.5*std::sqrt( sqr(xMax-xMin) + sqr(yMax-yMin) + sqr(zMax-zMin) ));
+scalar Ldef(0.5*std::sqrt( sqr(xMax-xMin) + sqr(yMax-yMin) ));
 
-Info << "Ldef = " << Ldef << endl << endl;
-   
+Info << "Ldef = " << Ldef << endl;
+ 
+scalar noDeformLevel(0.5*Ldef);
+Info << "noDeformLevel = " << noDeformLevel << endl << endl;
+    
 scalar z2Rel(0.0);
 scalar zNew(0.0);
 
@@ -1171,11 +1175,12 @@ for (label i = 0; i < topCentresX.size(); ++i)
 {
     concatenatedPointsX[Pstream::myProcNo()][i + bottomPointsX.size()] = topCentresX[i];
     concatenatedPointsY[Pstream::myProcNo()][i + bottomPointsY.size()] = topCentresY[i];
-    concatenatedPointsZ[Pstream::myProcNo()][i + bottomPointsZ.size()] = topCentresZ[i];
+    // concatenatedPointsZ[Pstream::myProcNo()][i + bottomPointsZ.size()] = topCentresZ[i];
+    concatenatedPointsZ[Pstream::myProcNo()][i + bottomPointsZ.size()] = noDeformLevel;
     concatenatedAreas[Pstream::myProcNo()][i + bottomPointsArea.size()] = topCentresAreas[i];
-    concatenatedDz[Pstream::myProcNo()][i + bottomPointsDz.size()] = topCentresDz[i];
     concatenatedDx[Pstream::myProcNo()][i + bottomPointsDx.size()] = topCentresDx[i];
     concatenatedDy[Pstream::myProcNo()][i + bottomPointsDy.size()] = topCentresDy[i];
+    concatenatedDz[Pstream::myProcNo()][i + bottomPointsDz.size()] = topCentresDz[i];
     concatenatedGlobalIndex[Pstream::myProcNo()][i + bottomPointsDz.size()] = globalIdxTop[i];
 }
 
@@ -1297,8 +1302,10 @@ scalar dyMax_rel;
 scalar xCoeff;
 scalar yCoeff;     
 
+scalar coeffHor;
+
 Tuple2<scalar, scalar> result;
-    
+      
 // Loop over all points in the mesh to interpolate vertical deformation
 forAll(pDeform,pointi)
 {                
@@ -1352,16 +1359,24 @@ forAll(pDeform,pointi)
                         globalPointsX, globalPointsY, globalPointsZ, 
                         globalDz, globalDx, globalDy, globalAreas); 
 
-        
-            interpDx = DeltaInterp.x();                       
-            interpDy = DeltaInterp.y();                       
-            interpDz = DeltaInterp.z();  
+
+            if ( pEval.z() > noDeformLevel)
+            {
+                coeffHor = ( zMax - pEval.z() ) / ( zMax - noDeformLevel );
+            }
+            else 
+            {
+                coeffHor = 1.0;
+            }
+            
+            interpDx = DeltaInterp.x()*coeffHor;                       
+            interpDy = DeltaInterp.y()*coeffHor;                       
+            interpDz = coeffHor * DeltaInterp.z() + (1.0 - coeffHor ) * maxTopo;  
         }                                      
     }
- 
- 
+  
     // New elevation of the deformed point, used to compute the enlargement
-    zNew = mesh.points()[pointi].z() + interpDz;
+    zNew = pEval.z() + interpDz;
 
     // Compute coefficient for horizontal enlargement                
     if (dzVert > 0)
