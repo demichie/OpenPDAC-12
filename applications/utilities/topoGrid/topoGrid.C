@@ -1580,9 +1580,6 @@ forAll(pDeform,pointi)
         dyMin_rel = (pEval.y() - yMin)/(yMax-yMin);
         dyMax_rel = (yMax - pEval.y())/(yMax-yMin);
 
-        dx_rel = mag(pEval.x())/(xMax-xMin);
-        dy_rel = mag(pEval.y())/(yMax-yMin);
-
         distC = Foam::sqrt(pow(pEval.x(),2) + pow(pEval.y(),2));
 
         distCoeff = max(0.0,min(1.0,(distC-distC1)/(distC2-distC1)));
