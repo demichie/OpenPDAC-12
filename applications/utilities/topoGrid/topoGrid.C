@@ -44,6 +44,96 @@ using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+void generateCroppedDEM(
+    const RectangularMatrix<double>& elevation,
+    scalar xllcorner, scalar yllcorner, scalar cellsize,
+    scalar xVent, scalar yVent, // Translation factors
+    scalar xmin, scalar xmax, scalar ymin, scalar ymax,
+    const word& outputFileName)
+{
+    // Adjust the domain bounds to match the DEM coordinate system
+    xmin += xVent;
+    xmax += xVent;
+    ymin += yVent;
+    ymax += yVent;
+
+    // Compute the new cell size ensuring an integer number of rows/cols
+    int ncols_new = round((xmax - xmin) / cellsize);
+    int nrows_new = round((ymax - ymin) / cellsize);
+    scalar cellsize_new = (xmax - xmin) / ncols_new; // Ensure exact fit
+
+    // Compute the new lower-left corner (adjusting for cell center convention)
+    scalar xllcorner_new = xmin + 0.5 * cellsize_new;
+    scalar yllcorner_new = ymin + 0.5 * cellsize_new;
+
+    Info << "Generating cropped DEM with cellsize: " << cellsize_new << " ("
+         << ncols_new << " x " << nrows_new << " grid)" << endl;
+
+    // Open output file
+    std::ofstream file(outputFileName);
+    if (!file)
+    {
+        FatalErrorInFunction << "Cannot open output file " << outputFileName << exit(FatalError);
+    }
+
+    // Write ASCII Raster Header
+    file << "ncols " << ncols_new << "\n";
+    file << "nrows " << nrows_new << "\n";
+    file << "xllcorner " << xllcorner_new << "\n";
+    file << "yllcorner " << yllcorner_new << "\n";
+    file << "cellsize " << cellsize_new << "\n";
+    file << "NODATA_value -9999\n";
+
+    // Bilinear interpolation over the new grid
+    for (int row = 0; row < nrows_new; ++row)
+    {
+        for (int col = 0; col < ncols_new; ++col)
+        {
+            // Compute world coordinates of the new cell center
+            scalar x = xllcorner_new + ( col + 0.5) * cellsize_new;
+            scalar y = yllcorner_new + (nrows_new - row - 0.5) * cellsize_new; // Top to bottom
+           
+            // Compute corresponding indices in the original DEM
+            int i = (y - (yllcorner + 0.5 * cellsize)) / cellsize;
+            int j = (x - (xllcorner + 0.5 * cellsize)) / cellsize;
+
+            if (i >= 0 && i < elevation.m() - 1 && j >= 0 && j < elevation.n() - 1)
+            {
+                // Compute interpolation weights
+                scalar xLerp = (x - (xllcorner + j * cellsize + 0.5 * cellsize)) / cellsize;
+                scalar yLerp = (y - (yllcorner + i * cellsize + 0.5 * cellsize)) / cellsize;
+
+                // Get the four surrounding elevation values
+                scalar v00 = elevation(i, j);
+                scalar v01 = elevation(i, j + 1);
+                scalar v10 = elevation(i + 1, j);
+                scalar v11 = elevation(i + 1, j + 1);
+
+                // Bilinear interpolation
+                scalar zInterp =
+                    v00 * (1 - xLerp) * (1 - yLerp) +
+                    v01 * xLerp * (1 - yLerp) +
+                    v10 * (1 - xLerp) * yLerp +
+                    v11 * xLerp * yLerp;
+
+                file << zInterp << " ";
+            }
+            else
+            {
+                file << "-9999 ";
+            }
+        }
+        file << "\n";
+    }
+
+    file.close();
+    Info << "Cropped DEM saved as " << outputFileName << endl;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+
+
 // Function to compute the normal vector of a triangle formed by points 
 // p1, p2, p3
 vector computeNormal(const point& p1, const point& p2, const point& p3)
@@ -557,6 +647,46 @@ RectangularMatrix<double> subsampleMatrix(
     return subsampled;
 }
 
+
+Tuple2<scalar, scalar> interpolateNegDeformation(
+    scalar z,
+    const bool useNegDeformation,
+    const scalarList& zNeg,
+    const scalarList& dxNeg,
+    const scalarList& dyNeg)
+{
+    if (!useNegDeformation) return Tuple2<scalar, scalar>(0.0, 0.0);
+
+    if (z >= 0.0) return Tuple2<scalar, scalar>(0.0, 0.0); // Above or at z=0 → No deformation
+
+    if (z > zNeg[0]) // Interpolate between (0,0) at z=0 and (dxNeg[0], dyNeg[0]) at zNeg[0]
+    {
+        scalar w = z / zNeg[0]; // Weight factor (z=0 → w=0, z=zNeg[0] → w=1)
+        scalar interpDx = w * dxNeg[0];
+        scalar interpDy = w * dyNeg[0];
+        return Tuple2<scalar, scalar>(interpDx, interpDy);
+    }
+
+    if (z <= zNeg.last()) // Below lowest zNeg → Constant deformation
+    {
+        return Tuple2<scalar, scalar>(dxNeg.last(), dyNeg.last());
+    }
+
+    // Find the two closest points for linear interpolation
+    for (label i = 0; i < zNeg.size() - 1; ++i)
+    {
+        if (zNeg[i] >= z && z > zNeg[i + 1])
+        {
+            scalar w = (z - zNeg[i + 1]) / (zNeg[i] - zNeg[i + 1]); // Interpolation weight
+            scalar interpDx = w * dxNeg[i] + (1 - w) * dxNeg[i + 1];
+            scalar interpDy = w * dyNeg[i] + (1 - w) * dyNeg[i + 1];
+            return Tuple2<scalar, scalar>(interpDx, interpDy);
+        }
+    }
+
+    return Tuple2<scalar, scalar>(0.0, 0.0); // Should never reach this point
+}
+
 //--------------------------------------------------------------
 
 int main(int argc, char *argv[])
@@ -612,8 +742,45 @@ const Switch raiseTop = topoDict.lookupOrDefault<Switch>("raiseTop", true);
 const Switch orthogonalCorrection = topoDict.lookupOrDefault<Switch>("orthogonalCorrection", false);
 const scalar dist_rel1 = topoDict.lookupOrDefault<scalar>("dist_rel1", 0.1);
 const scalar dist_rel2 = topoDict.lookupOrDefault<scalar>("dist_rel2", 0.2);
+
+const scalar distC1 = topoDict.lookupOrDefault<scalar>("distC1", 0.0);
+const scalar distC2 = topoDict.lookupOrDefault<scalar>("distC2", 0.0);
+
     
 const scalar coeffVertDeformation = topoDict.lookupOrDefault<scalar>("coeffVertDeformation", 1.0);
+ 
+// Initialize empty lists
+scalarList zNeg, dxNeg, dyNeg;
+bool useNegDeformation = true;
+
+if (topoDict.found("zNeg") && topoDict.found("dxNeg") && topoDict.found("dyNeg"))
+{
+    zNeg = topoDict.lookup<scalarList>("zNeg");
+    dxNeg = topoDict.lookup<scalarList>("dxNeg");
+    dyNeg = topoDict.lookup<scalarList>("dyNeg");
+
+    // Ensure zNeg is sorted in decreasing order
+    for (label i = 0; i < zNeg.size() - 1; ++i)
+    {
+        if (zNeg[i] < zNeg[i + 1]) // Should be decreasing
+        {
+            FatalErrorInFunction << "zNeg list must be sorted in decreasing order (less negative first)" << exit(FatalError);
+        }
+    }
+
+    if (zNeg.size() != dxNeg.size() || zNeg.size() != dyNeg.size())
+    {
+        FatalErrorInFunction << "zNeg, dxNeg, and dyNeg must have the same size" << exit(FatalError);
+    }
+
+    Info << "Read " << zNeg.size() << " negative deformation levels." << endl;
+}
+else
+{
+    Info << "Missing zNeg, dxNeg, or dyNeg in topoGridDict. Horizontal deformation will be set to zero." << endl;
+    useNegDeformation = false;
+}
+ 
  
 // Output the file name to the terminal for verification
 Info << "Raster file specified: " << rasterFile << endl;
@@ -737,6 +904,10 @@ reduce(zMax, maxOp<scalar>());
   
 Info << "zMin = " << zMin << endl;
 Info << "zMax = " << zMax << endl;
+
+word croppedDEMFile = "DEMcropped.asc";
+generateCroppedDEM(elevation, xllcorner+xVent, yllcorner+yVent, cellsize, xVent, yVent, xMin, xMax, yMin, yMax, croppedDEMFile);
+
  
 // Approximation of the maximum distance of any mesh node 
 // from the mesh centroid (Sen et al, 2017) 
@@ -1300,7 +1471,10 @@ scalar dyMin_rel;
 scalar dyMax_rel;
 
 scalar xCoeff;
-scalar yCoeff;     
+scalar yCoeff;  
+
+scalar distC;   
+scalar distCoeff;   
 
 scalar coeffHor;
 
@@ -1339,15 +1513,20 @@ forAll(pDeform,pointi)
     {
         if ( pEval.z() < 1.e-3 )
         {
+            // New: Compute horizontal deformation using zNeg, dxNeg, dyNeg
+            Tuple2<scalar, scalar> negDeform = interpolateNegDeformation(
+                pEval.z(), useNegDeformation, zNeg, dxNeg, dyNeg);
+            interpDx = negDeform.first();
+            interpDy = negDeform.second();    
+            // Info << pEval.z() << " " << interpDx << " " << interpDy << endl;                  
+            
             // For points on or below the topography consider only (x,y)
             pEval.z() = 0.0;
-
+            
             result = inverseDistanceInterpolationDzBottom(pEval, globalBottomCentresX, 
                  globalBottomCentresY, globalBottomCentresDz, 
                  globalBottomCentresAreas, interpRelRadius);
 
-            interpDx = 0.0;                       
-            interpDy = 0.0;                       
             interpDz = result.first();
         }    
         else
@@ -1401,8 +1580,15 @@ forAll(pDeform,pointi)
         dyMin_rel = (pEval.y() - yMin)/(yMax-yMin);
         dyMax_rel = (yMax - pEval.y())/(yMax-yMin);
 
-        xCoeff = max(0.0,min(1.0,(min(dxMin_rel,dxMax_rel)-dist_rel1)/(dist_rel2-dist_rel1)));
-        yCoeff = max(0.0,min(1.0,(min(dyMin_rel,dyMax_rel)-dist_rel1)/(dist_rel2-dist_rel1)));
+        dx_rel = mag(pEval.x())/(xMax-xMin);
+        dy_rel = mag(pEval.y())/(yMax-yMin);
+
+        distC = Foam::sqrt(pow(pEval.x(),2) + pow(pEval.y(),2));
+
+        distCoeff = max(0.0,min(1.0,(distC-distC1)/(distC2-distC1)));
+
+        xCoeff = min(distCoeff,max(0.0,min(1.0,(min(dxMin_rel,dxMax_rel)-dist_rel1)/(dist_rel2-dist_rel1))));
+        yCoeff = min(distCoeff,max(0.0,min(1.0,(min(dyMin_rel,dyMax_rel)-dist_rel1)/(dist_rel2-dist_rel1))));
 
         pDeform[pointi].x() = xCoeff * interpDx * pEval.z();
         pDeform[pointi].y() = yCoeff * interpDy * pEval.z();     
@@ -1414,6 +1600,11 @@ forAll(pDeform,pointi)
         pDeform[pointi].x() += z2Rel*(expFactor-1.0)*(pEval.x()+pDeform[pointi].x());
         pDeform[pointi].y() += z2Rel*(expFactor-1.0)*(pEval.y()+pDeform[pointi].y());
 
+    }
+    else
+    {
+        pDeform[pointi].x() = interpDx;
+        pDeform[pointi].y() = interpDy;    
     }
 
     pDeform[pointi].z() = interpDz;
