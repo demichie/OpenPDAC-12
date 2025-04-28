@@ -1478,6 +1478,9 @@ scalar distCoeff;
 
 scalar coeffHor;
 
+// scalar craterDx = - dxNeg[0] / Foam::sqrt(pow(dxNeg[0],2) + pow(dyNeg[0],2));
+// scalar craterDy = - dyNeg[0] / Foam::sqrt(pow(dxNeg[0],2) + pow(dyNeg[0],2));
+
 Tuple2<scalar, scalar> result;
       
 // Loop over all points in the mesh to interpolate vertical deformation
@@ -1580,15 +1583,31 @@ forAll(pDeform,pointi)
         dyMin_rel = (pEval.y() - yMin)/(yMax-yMin);
         dyMax_rel = (yMax - pEval.y())/(yMax-yMin);
 
-        distC = Foam::sqrt(pow(pEval.x(),2) + pow(pEval.y(),2));
-
-        distCoeff = max(0.0,min(1.0,(distC-distC1)/(distC2-distC1)));
+        if ( distC2 > distC1 )
+        {
+            distC = Foam::sqrt(pow(pEval.x(),2) + pow(pEval.y(),2));
+            distCoeff = max(0.0,min(1.0,(distC-distC1)/(distC2-distC1)));
+        }
+        else
+        {
+            distCoeff = 1.0;
+        }
 
         xCoeff = min(distCoeff,max(0.0,min(1.0,(min(dxMin_rel,dxMax_rel)-dist_rel1)/(dist_rel2-dist_rel1))));
         yCoeff = min(distCoeff,max(0.0,min(1.0,(min(dyMin_rel,dyMax_rel)-dist_rel1)/(dist_rel2-dist_rel1))));
-
+        
         pDeform[pointi].x() = xCoeff * interpDx * pEval.z();
         pDeform[pointi].y() = yCoeff * interpDy * pEval.z();     
+
+
+        /*
+        xCoeff = max(0.0,min(1.0,(min(dxMin_rel,dxMax_rel)-dist_rel1)/(dist_rel2-dist_rel1)));
+        yCoeff = max(0.0,min(1.0,(min(dyMin_rel,dyMax_rel)-dist_rel1)/(dist_rel2-dist_rel1)));
+
+        pDeform[pointi].x() = ( ( 1.0 - distCoeff ) * craterDx + distCoeff * xCoeff * interpDx ) * pEval.z();
+        pDeform[pointi].y() = ( ( 1.0 - distCoeff ) * craterDy + distCoeff * yCoeff * interpDy ) * pEval.z();
+        */
+
 
         // pDeform[pointi].x() = interpDx * pEval.z();
         // pDeform[pointi].y() = interpDy * pEval.z();     
