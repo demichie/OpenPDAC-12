@@ -746,6 +746,10 @@ const scalar dist_rel2 = topoDict.lookupOrDefault<scalar>("dist_rel2", 0.2);
 const scalar distC1 = topoDict.lookupOrDefault<scalar>("distC1", 0.0);
 const scalar distC2 = topoDict.lookupOrDefault<scalar>("distC2", 0.0);
 
+// Read the switch to save the cropped topography
+const Switch saveCrop = topoDict.lookupOrDefault<Switch>("saveCrop", false);
+
+
     
 const scalar coeffVertDeformation = topoDict.lookupOrDefault<scalar>("coeffVertDeformation", 1.0);
  
@@ -905,8 +909,11 @@ reduce(zMax, maxOp<scalar>());
 Info << "zMin = " << zMin << endl;
 Info << "zMax = " << zMax << endl;
 
-word croppedDEMFile = "DEMcropped.asc";
-generateCroppedDEM(elevation, xllcorner+xVent, yllcorner+yVent, cellsize, xVent, yVent, xMin, xMax, yMin, yMax, croppedDEMFile);
+if (saveCrop)
+{        
+    word croppedDEMFile = "DEMcropped.asc";
+    generateCroppedDEM(elevation, xllcorner+xVent, yllcorner+yVent, cellsize, xVent, yVent, xMin, xMax, yMin, yMax, croppedDEMFile);
+}
 
  
 // Approximation of the maximum distance of any mesh node 
