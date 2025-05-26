@@ -209,7 +209,7 @@ bool Foam::functionObjects::cloudDetails::write()
                 const vector& U = p.U();
                 scalar rho = p.rho();
                 scalar d = p.d();
-                label origId = p.origProc();
+                label origProc = p.origProc();
                 label origId = p.origId();
                 
                 label base = j * 10;
@@ -257,7 +257,7 @@ bool Foam::functionObjects::cloudDetails::write()
 
                 for (label h = 0; h < allData.size(); h++)
                 {
-                    if (h% 10 == 0) or (h% 10 == 1) 
+                    if ((h% 10 == 0) or (h% 10 == 1)) 
                     {
                         ofs << label(allData[h]);
                     }
