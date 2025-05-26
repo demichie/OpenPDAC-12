@@ -198,7 +198,7 @@ bool Foam::functionObjects::cloudDetails::write()
         if (momCloud)
         {
         
-            Foam::List<Foam::scalar> localData(cloud.nParcels()*9);
+            Foam::List<Foam::scalar> localData(cloud.nParcels()*10);
 
             Info << "Writing cloud with " << nParcels << " nParcels" << endl;
             label j = 0;
@@ -209,19 +209,21 @@ bool Foam::functionObjects::cloudDetails::write()
                 const vector& U = p.U();
                 scalar rho = p.rho();
                 scalar d = p.d();
+                label origId = p.origProc();
                 label origId = p.origId();
                 
-                label base = j * 9;
+                label base = j * 10;
 
-                localData[base + 0] = scalar(origId);
-                localData[base + 1] = pos.x();
-                localData[base + 2] = pos.y();
-                localData[base + 3] = pos.z();
-                localData[base + 4] = U.x();
-                localData[base + 5] = U.y();
-                localData[base + 6] = U.z();
-                localData[base + 7] = rho;
-                localData[base + 8] = d;
+                localData[base + 0] = scalar(origProc);
+                localData[base + 1] = scalar(origId);
+                localData[base + 2] = pos.x();
+                localData[base + 3] = pos.y();
+                localData[base + 4] = pos.z();
+                localData[base + 5] = U.x();
+                localData[base + 6] = U.y();
+                localData[base + 7] = U.z();
+                localData[base + 8] = rho;
+                localData[base + 9] = d;
                 j++;
             }
 
@@ -250,12 +252,12 @@ bool Foam::functionObjects::cloudDetails::write()
 
                 // writeTime(ofs);
 
-                ofs << "origId,x,y,z,Ux,Uy,Uz,rho,d\n" ;
+                ofs << "origProc,origId,x,y,z,Ux,Uy,Uz,rho,d\n" ;
         
 
                 for (label h = 0; h < allData.size(); h++)
                 {
-                    if (h% 9 == 0)
+                    if (h% 10 == 0) or (h% 10 == 1) 
                     {
                         ofs << label(allData[h]);
                     }
@@ -264,7 +266,7 @@ bool Foam::functionObjects::cloudDetails::write()
                         ofs << allData[h];
                     }
                     
-                    if ((h + 1) % 9 == 0)
+                    if ((h + 1) % 10 == 0)
                     {
                         ofs << "\n";  // fine riga
                     }
