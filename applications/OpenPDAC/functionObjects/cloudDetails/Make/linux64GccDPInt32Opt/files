@@ -1,0 +1,3 @@
+SOURCE += cloudDetails.C
+
+LIB = $(FOAM_USER_LIBBIN)/liblagrangianDetails

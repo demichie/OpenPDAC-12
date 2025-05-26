@@ -1,5 +1,6 @@
 phaseForces/phaseForces.C
 phaseMap/phaseMap.C
 wallBoilingProperties/wallBoilingProperties.C
+cloudDetails/cloudDetails.C
 
 LIB = $(FOAM_USER_LIBBIN)/libOpenPDACFunctionObjects
