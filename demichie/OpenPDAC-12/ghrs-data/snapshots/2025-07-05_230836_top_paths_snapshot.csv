@@ -1,0 +1,8 @@
+url_path,views_total,views_unique
+/demichie/OpenPDAC-12,4,4
+/demichie/OpenPDAC-12/tree/main,4,3
+/demichie/OpenPDAC-12/tree/main/applications,2,2
+/demichie/OpenPDAC-12/tree/main/run/synthTopo,2,2
+/demichie/OpenPDAC-12/blob/main/run/synthTopo/plotBallistics.py,2,1
+/demichie/OpenPDAC-12/tree/main/applications/multiphaseEuler,1,1
+/demichie/OpenPDAC-12/tree/main/run,1,1
