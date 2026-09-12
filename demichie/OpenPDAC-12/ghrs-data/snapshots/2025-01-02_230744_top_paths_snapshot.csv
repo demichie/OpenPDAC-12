@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/demichie/OpenPDAC-12,3,3
+/demichie/OpenPDAC-12/blob/main/run/synthTopo/MPIJob_run.script,3,1
+/demichie/OpenPDAC-12/tree/main,2,1
+/demichie/OpenPDAC-12/tree/main/run,2,1
+/demichie/OpenPDAC-12/tree/main/run/synthTopo,2,1
+/demichie/OpenPDAC-12/blob/main/run/flow_wave/MPIJob_run.script,1,1
+/demichie/OpenPDAC-12/blob/main/run/flow_wave/submitMPIcase.sh,1,1
+/demichie/OpenPDAC-12/tree/main/applications,1,1
+/demichie/OpenPDAC-12/tree/main/applications/OpenPDAC,1,1
+/demichie/OpenPDAC-12/tree/main/run/flow_wave,1,1
